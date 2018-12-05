@@ -1,0 +1,33 @@
+{
+  "name": "eslint-plugin-uship-omniscient",
+  "version": "0.0.0",
+  "description": "An eslint rule to lint for, and fix, usages of omniscient.",
+  "keywords": [
+    "eslint",
+    "eslintplugin",
+    "eslint-plugin"
+  ],
+  "author": "Richard Simpson",
+  "main": "lib/index.js",
+  "scripts": {
+    "test": "mocha tests --require ts-node/register \"./tests/**/*.spec.ts\"",
+    "test:debug": "mocha tests --require ts-node/register \"./tests/**/*.spec.ts\" --inspect-brk"
+  },
+  "dependencies": {
+    "requireindex": "~1.1.0"
+  },
+  "devDependencies": {
+    "@types/eslint": "^4.16.5",
+    "@types/node": "^10.12.12",
+    "babel-eslint": "^10.0.1",
+    "eslint": "~3.9.1",
+    "eslint-plugin-react": "^7.11.1",
+    "mocha": "^3.1.2",
+    "ts-node": "^7.0.1",
+    "typescript": "^3.2.1"
+  },
+  "engines": {
+    "node": ">=0.10.0"
+  },
+  "license": "ISC"
+}
