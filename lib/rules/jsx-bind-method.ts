@@ -28,7 +28,10 @@ const JsxBindMethodRule: Rule.RuleModule = {
             category: "JSX Gotchas",
             recommended: true
         },
-        fixable: "code"
+        fixable: "code",
+        messages: {
+            "omniscient.conversion-issues.jsx-bind": "Make sure that you're properly binding methods to this `this` when passing them into JSX attributes."
+        }
     },
 
     create(context) {
@@ -55,8 +58,7 @@ const JsxBindMethodRule: Rule.RuleModule = {
                 }
 
                 context.report({
-                    message: "Make sure that you're properly binding methods to this `this` when passing them into JSX attributes.",
-                    messageId: "uship.omniscient.conversion-issues.jsx-bind",
+                    messageId: "omniscient.conversion-issues.jsx-bind",
                     node: node,
                     fix: bindFixit(jsx)
                 });

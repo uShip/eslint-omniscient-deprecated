@@ -21,7 +21,7 @@ ruleTester.run("jsx-bind-method", rule, {
         {
             code: "<h1 onClick={this.handleClick}>Test</h1>",
             errors: [{
-                messageId: "uship.omniscient.conversion-issues.jsx-bind"
+                messageId: "omniscient.conversion-issues.jsx-bind"
             }],
             output: `<h1 onClick={this.handleClick.bind(this)}>Test</h1>`
         }

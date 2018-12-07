@@ -1,5 +1,6 @@
-import { Rule } from "eslint";
-import { Program, ImportDeclaration, CallExpression, Literal, Node as EsNode, Identifier, BaseFunction } from "estree";
+import { Rule, SourceCode } from "eslint";
+import { Program, ImportDeclaration, CallExpression, Literal, Node as EsNode, Identifier, BaseFunction, ObjectExpression, FunctionExpression, Property, ReturnStatement } from "estree";
+import prettier from 'prettier';
 
 /**
  * @fileoverview Usage of omniscient component
@@ -24,7 +25,10 @@ const omniscientComponentRule: Rule.RuleModule = {
             category: "uship.omniscient",
             recommended: true,
         },
-        fixable: "code"
+        fixable: "code",
+        messages: {
+            "omniscient.usage-deprecated": "Usage of omniscient components is deprecated. You should use an immutable compatible component instead.",
+        }
     },
 
     create(context) {
@@ -74,18 +78,17 @@ const omniscientComponentRule: Rule.RuleModule = {
             }
         }
 
-        //----------------------------------------------------------------------
-        // Fixits
-        //----------------------------------------------------------------------
-        function functionComponentFixit(this: Rule.ReportDescriptorLocation, fixer: Rule.RuleFixer) {
-            const calli = (this as any)["node"] as CallExpression;
-            const sourceCode = context.getSourceCode();
-        
-            const displayName = (calli.arguments[0] as Literal).value;
-            const parent = (calli as any)["parent"] as EsNode;
-            const componentName = parent.type === "VariableDeclarator" ? (parent.id as Identifier).name : displayName;
+        function getComponentNames(componentCall: CallExpression) {
+            const displayName = (componentCall.arguments[0] as Literal).value;
+            const parent = (componentCall as any)["parent"] as EsNode;
+            const className = parent.type === "VariableDeclarator" ? (parent.id as Identifier).name : displayName;
+            return {
+                displayName,
+                className
+            };
+        }
 
-            const renderFunc = calli.arguments[1] as any as BaseFunction;
+        function createRenderBody(renderFunc: BaseFunction, sourceCode: SourceCode) {
             const hasPropsArgument = renderFunc.params.length > 0;
 
             const isExpression = renderFunc.body.type !== "BlockStatement";
@@ -108,24 +111,204 @@ const omniscientComponentRule: Rule.RuleModule = {
                 propsInit += '\n        ';
             }
 
-            renderNewText = `{
+            return `
+    {
         ${propsInit}${renderNewText}
-    }`;
-
-            const newBody = `
-class ${componentName} extends React.Component {
-    render() ${renderNewText}
-}
-
-${componentName}.displayName = '${displayName}';
-            `.trim();
-
-            return fixer.replaceText((parent as any).parent, newBody);
+    }`.trim();            
         }
 
-        function componentFixit(this: Rule.ReportDescriptor, fixer: Rule.RuleFixer) {
-            // Do Stuff
-            return null;
+        function propertyBodyToSource(property: Property, name: string, sourceCode: SourceCode) {            
+            let body = '';
+            if (property.shorthand) {
+                body = `${name} = ${name};`;
+            } else if (property.method) {
+                body = sourceCode.getText(property);
+            } else {
+                // TODO: Special case functions
+                body = `${name} = ${sourceCode.getText(property.value)};`;
+            }
+            return body;
+        }
+        
+        function mapMixinToProperty(property: Property): string[] {
+            const sourceCode = context.getSourceCode();
+            
+            let name: string | number = '';
+            const key = property.key;
+            switch (key.type) {
+                case "Literal":
+                    name = `${key.value}`;
+                    break;
+                case "Identifier":
+                    name = key.name;
+                    break;
+                default:
+                    name = sourceCode.getText(key);
+            }
+
+            if (property.computed) {
+                name = `[${name}]`;
+            }
+            // TODO: Special Case Default Props and State
+
+            if (name.toLowerCase() === "getdefaultprops") {
+                const body = property.value;
+                if (body.type !== "FunctionExpression" || body.body.type !== "BlockStatement") {
+                    return [
+                        `defaultProps = ${name}();`,
+                        propertyBodyToSource(property, name, sourceCode)
+                    ]
+                }
+                return [`defaultProps = ${sourceCode.getText((body.body.body as [ReturnStatement])[0].argument!)};`]
+            }
+            return [propertyBodyToSource(property, name, sourceCode)];
+        }
+
+        function formatAndReplace(callExpression: CallExpression, fixer: Rule.RuleFixer, newBody: string) {
+            let parent = callExpression as any;
+            while (parent.parent && parent.parent.type !== "Program") {
+                parent = parent.parent;
+            }
+
+            const formattedBody = prettier.format(newBody, {
+                parser: 'babylon',
+                tabWidth: 4
+            }).trim();
+            return fixer.replaceText(parent, formattedBody);
+        }
+
+        function getReactFixit(fixer: Rule.RuleFixer): { importFixer: Rule.Fix | null; defaultImport: string | null; imported: string | null } {
+            const root = context.getAncestors()[0];
+            if (root.type !== "Program") {
+                return { importFixer: null, defaultImport: null, imported: null };
+            }
+
+            let reactDeclaration: ImportDeclaration | null = null;
+            for (const child of root.body) {
+                if (child.type !== "ImportDeclaration") {
+                    continue;
+                }
+
+                if (child.source.value !== 'react') {
+                    continue;
+                }
+                reactDeclaration = child;
+            }
+
+            if (!reactDeclaration) {
+                const fix: Rule.Fix = { range: [0,0], text: `import { Component } from 'react';\n` };
+                return { importFixer: fix, defaultImport: null, imported: 'Component' };
+            }
+
+            let defaultImport: string | null = null;
+            let lastImportSpecifier: [number, number] | null = null;
+
+            for (const specifier of reactDeclaration.specifiers) {
+                if (specifier.type === "ImportDefaultSpecifier") {
+                    defaultImport = specifier.local.name;
+                } else if (specifier.type === "ImportSpecifier") {
+                    if (specifier.imported.name === "Component") {
+                        return { importFixer: null, defaultImport: null, imported: specifier.local.name };
+                    }
+                    lastImportSpecifier = specifier.range!;
+                }
+            }
+
+            if (lastImportSpecifier) {
+                return {
+                    importFixer: fixer.insertTextAfterRange(lastImportSpecifier, ", Component"),
+                    defaultImport: null,
+                    imported: "Component"
+                };
+            } else if (defaultImport) {
+                return { importFixer: null, defaultImport, imported: null };   
+            }
+            return { importFixer: null, defaultImport: null, imported: null };
+        }
+
+        //----------------------------------------------------------------------
+        // Fixits
+        //----------------------------------------------------------------------
+        function componentFixit(this: Rule.ReportDescriptor, fixer: Rule.RuleFixer): Rule.Fix[] {
+            const calli = (this as any)["node"] as CallExpression;
+            const sourceCode = context.getSourceCode();
+
+            const {displayName, className} = getComponentNames(calli);
+            const imports = getReactFixit(fixer);
+            const importName = imports.imported ? imports.imported : `${(imports.defaultImport || "React")}.Component}`;
+
+            let componentOptions: ObjectExpression | null = null;
+            if (calli.arguments.length === 3) {
+                if (calli.arguments[1].type !== "ObjectExpression") {
+                    console.debug("Non-object expressions not support.");
+                    return [];
+                }
+                componentOptions = calli.arguments[1] as ObjectExpression;
+            }
+
+            const renderFunc = calli.arguments[calli.arguments.length === 3 ? 2 : 1] as FunctionExpression;
+            const renderBody = createRenderBody(renderFunc, sourceCode);
+
+            const constructorLines: string[] = [];
+            const bodyProps = [`render() ${renderBody}`];
+            const staticProps = [`displayName = '${displayName}';`];
+
+            if (componentOptions) {
+                for (const property of componentOptions.properties) {
+                    if (property.key.type === "Identifier" && property.key.name === "getInitialState") {
+                        const body = property.value;
+                        if (body.type !== "FunctionExpression" || body.body.type !== "BlockStatement") {
+                            bodyProps.push(propertyBodyToSource(property, 'getInitialState', sourceCode));
+                            constructorLines.push(`this.state = getInitialState();`);
+                        } else {
+                            const stateBody = sourceCode.getText(((body as FunctionExpression).body.body as [ReturnStatement])[0].argument!)
+                            constructorLines.push(`this.state = ${stateBody};`);
+                        }
+                        continue;
+                    }
+
+                    const text = mapMixinToProperty(property);
+                    if (text) {
+                        bodyProps.push(...text);
+                    }
+                }
+            }
+
+            const classBody: string[] = [];
+            classBody.push(`class ${className} extends ${importName} {`);
+
+            if (constructorLines.length > 0) {
+                classBody.push('constructor(props) {');
+                classBody.push('super(props);')
+                for (const constructorLine of constructorLines) {
+                    classBody.push(constructorLine);
+                }
+                classBody.push('}');
+                classBody.push('');
+            }
+            
+            while (bodyProps.length > 0) {
+                const next = bodyProps.pop()!;
+                classBody.push(next);
+                if (bodyProps.length > 0) {
+                    classBody.push('');
+                }
+            }
+
+            classBody.push('}');
+            classBody.push('');
+
+            for (const staticProp of staticProps) {
+                classBody.push(`${className}.${staticProp}`);
+            }           
+            
+            const fixits: Array<Rule.Fix> = [];
+
+            if (imports.importFixer) {
+                fixits.push(imports.importFixer);
+            }
+            fixits.push(formatAndReplace(calli, fixer, classBody.join('\n')));
+            return fixits;
         }
 
         //----------------------------------------------------------------------
@@ -133,20 +316,6 @@ ${componentName}.displayName = '${displayName}';
         //----------------------------------------------------------------------
 
         return {
-
-            ImportDeclaration(node) {
-                const importDeclaration = node as ImportDeclaration;
-                if (importDeclaration.source.value === "omniscient") {
-                    context.report({
-                        message: "Usage of omniscient components are deprecated",
-                        loc: node.loc!,
-                        messageId: "uship.omniscient.import",
-                        fix: (fixer) => {
-                            return fixer.replaceText(node, "");
-                        }
-                    });
-                }
-            },
             "CallExpression": function(node) {
                 const calli = node as CallExpression;
                 const componentName = getComponentExportName();
@@ -163,25 +332,22 @@ ${componentName}.displayName = '${displayName}';
                 switch (callForm) {
                     case ComponentCallForm.Function:
                         context.report({
-                            message: "Usage of omniscient components is deprecated. You should use an immutable compatible component instead.",
-                            messageId: "uship.omniscient.usage",
+                            messageId: "omniscient.usage-deprecated",
                             node: node,
-                            fix: functionComponentFixit
+                            fix: componentFixit as any
                         });
                         return;
                     case ComponentCallForm.Component:                    
                         context.report({
-                            message: "Usage of omniscient components is deprecated. You should use an immutable compatible component instead.",
-                            messageId: "uship.omniscient.usage",
+                            messageId: "omniscient.usage-deprecated",
                             node: node,
-                            fix: componentFixit
+                            fix: componentFixit as any
                         });
                         return;
                     default:
                         context.report({
-                            message: "Usage of omniscient components are deprecated. You shold replace this with a React.Component or React.memo equivalent.",
                             node: node,
-                            messageId: "uship.omniscient.usage"
+                            messageId: "omniscient.usage-deprecated"
                         });
                 }
 
