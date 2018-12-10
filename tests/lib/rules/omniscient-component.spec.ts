@@ -9,7 +9,7 @@ import eslintConfig from "./eslintRuleConfig";
 var ruleTester = new RuleTester(eslintConfig);
 ruleTester.run("omniscient-component", rule, {
     valid: [
-        {   
+        {
             code: `
                 import { Component } from 'react';
                 class MyThing extends Component {
@@ -17,7 +17,7 @@ ruleTester.run("omniscient-component", rule, {
                         /*...*/
                     }
                 }`
-        }   
+        }
     ],
 
     invalid: [
@@ -89,7 +89,7 @@ class TestComponent extends Component {
 
 TestComponent.displayName = "TestComponent";`.trim()
         },
-        
+
         {
             code: `
 import component from 'omniscient';
@@ -109,7 +109,7 @@ import { Component } from 'react';
 import component from 'omniscient';
 
 class TestComponent extends Component {
-    propTypes = {
+    static propTypes = {
         label: PropTypes.string
     };
 
@@ -144,7 +144,43 @@ import { Component } from 'react';
 import component from 'omniscient';
 
 class TestComponent extends Component {
-    defaultProps = { label: "test" };
+    static defaultProps = { label: "test" };
+
+    render() {
+        const { label } = this.props;
+        return <h1>{label}</h1>;
+    }
+}
+
+TestComponent.displayName = "TestComponent";`.trim()
+        },
+
+        {
+            code: `
+import component from 'omniscient';
+import { getDefaultPropsFor } from 'test';
+
+const TestComponent = component("TestComponent", {
+    getDefaultProps() {
+        const test = 2;
+        return getDefaultPropsFor(test);
+    }
+}, ({label}) => {
+    return (<h1>{label}</h1>);
+})`.trim(),
+            errors: [{
+                messageId: "omniscient.usage-deprecated"
+            }],
+            output: `
+import { Component } from 'react';
+import component from 'omniscient';
+import { getDefaultPropsFor } from 'test';
+
+class TestComponent extends Component {
+    static get defaultProps() {
+        const test = 2;
+        return getDefaultPropsFor(test);
+    }
 
     render() {
         const { label } = this.props;
@@ -158,7 +194,7 @@ TestComponent.displayName = "TestComponent";`.trim()
         /**********************************************/
         /*   Test Default State Transform   */
         /**********************************************/
-        
+
         {
             code: `
 import component from 'omniscient';
@@ -190,6 +226,116 @@ class TestComponent extends Component {
 }
 
 TestComponent.displayName = "TestComponent";`.trim()
+        },
+
+        /**********************************************/
+        /*   Test nameless components   */
+        /**********************************************/
+        {
+            code: `
+import component from 'omniscient';
+
+const TestComponent = component({
+    getInitialState() {
+        return { i: 1 };
+    }
+}, ({label}) => {
+    return (<h1>{label}</h1>);
+})`.trim(),
+            errors: [{ messageId: "omniscient.usage-deprecated" }],
+            output: `
+import { Component } from 'react';
+import component from 'omniscient';
+
+class TestComponent extends Component {
+    constructor(props) {
+        super(props);
+        this.state = { i: 1 };
+    }
+
+    render() {
+        const { label } = this.props;
+        return <h1>{label}</h1>;
+    }
+}`.trim(),
+        },
+
+        /**********************************************/
+        /*   Test Unsuppored mixins   */
+        /**********************************************/
+        {
+            code: `
+            import component from 'omniscient';
+            import testMixin from 'test';
+            
+            const TestComponent = component("TestComponent", [{
+                getInitialState() {
+                    return { i: 1 };
+                }
+            }, testMixin], ({label}) => {
+                return (<h1>{label}</h1>);
+            })`,
+            errors: [{ messageId: "omniscient.usage-deprecated" }],
+        },
+
+        /**********************************************/
+        /*    Test Wrapped or generated Components    */
+        /**********************************************/
+        {
+            code: `
+import component from 'omniscient';
+
+function withProps(Component, props) {
+    return component(Component.displayName + '_WithProps', newProps => {
+        return <Component {...newProps} {...props} />;
+    });
+}`.trim(),
+            errors: [{
+                messageId: "omniscient.usage-deprecated"
+            }],
+            output: `
+import { Component } from 'react';
+import component from 'omniscient';
+
+function withProps(Component, props) {
+    return (() => {
+    class AnonymousComponent extends Component {
+        render() {
+            const newProps = this.props;
+            return <Component {...newProps} {...props} />;
         }
+    }
+
+    AnonymousComponent.displayName = "Component.displayName + '_WithProps'";
+})();
+}`.trim()
+        },
+
+        /**********************************************/
+        /*    Respects Options    */
+        /**********************************************/
+        {
+            code: `
+import component from 'omniscient';
+
+const TestComponent = component("TestComponent", () => {
+    return (<h1>Test</h1>);
+})`.trim(),
+            errors: [{
+                messageId: "omniscient.usage-deprecated"
+            }],
+            options: [{ componentModule: 'src/utils/ImmutableComponent', componentImport: 'ImmutableComponent' }],
+            output: `
+import { ImmutableComponent } from 'src/utils/ImmutableComponent';
+import component from 'omniscient';
+
+class TestComponent extends ImmutableComponent {
+    render() {
+        return <h1>Test</h1>;
+    }
+}
+
+TestComponent.displayName = "TestComponent";`.trim()
+        },
     ]
 });
