@@ -379,9 +379,13 @@ export class ComponentFixer {
             // Escape any special characters
             name = name.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
 
-            renderNewText = renderNewText.replace(new RegExp("this" + name + "[}\w;]", "gm"), (substring) => {
+            renderNewText = renderNewText.replace(new RegExp("this" + name + "[}\w;\,]", "gm"), (substring) => {
                 return `this${rawName}.bind(this)${substring[substring.length - 1]}`
             });
+        }
+
+        if (isExpression) {
+            renderNewText = `return ${renderNewText}`;
         }
 
         return `

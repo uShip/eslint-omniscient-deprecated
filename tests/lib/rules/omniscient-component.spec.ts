@@ -313,6 +313,30 @@ function withProps(Component, props) {
         },
 
         /**********************************************/
+        /*    Test Lambda Renders   */
+        /**********************************************/
+        {
+            code: `
+import component from 'omniscient';
+
+const TestComponent = component("TestComponent", ({label}) => <h1>{label}</h1>);
+`.trim(),
+            errors: [{ messageId: "omniscient.usage-deprecated" }],
+            output: `
+import { Component } from 'react';
+import component from 'omniscient';
+
+class TestComponent extends Component {
+    render() {
+        const { label } = this.props;
+        return <h1>{label}</h1>;
+    }
+}
+
+TestComponent.displayName = "TestComponent";`.trim(),
+        },
+
+        /**********************************************/
         /*    Respects Options    */
         /**********************************************/
         {
@@ -362,7 +386,7 @@ const TestComponent = component("TestComponent", {
     }
 }, ({label}) => {    
     const options = {
-        onThing: this.doThing.bind(this),
+        onThing: this.doThing,
         thatThing: this.thatThing(1)
     };
     return <button onClick={this.handleClick}>Test</button>;
