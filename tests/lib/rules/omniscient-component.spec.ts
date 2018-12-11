@@ -307,6 +307,7 @@ function withProps(Component, props) {
     }
 
     AnonymousComponent.displayName = "Component.displayName + '_WithProps'";
+    return AnonymousComponent;
 })();
 }`.trim()
         },
@@ -332,6 +333,72 @@ import component from 'omniscient';
 class TestComponent extends ImmutableComponent {
     render() {
         return <h1>Test</h1>;
+    }
+}
+
+TestComponent.displayName = "TestComponent";`.trim()
+        },
+
+        /**********************************************/
+        /*        Test Automatic Function Bind        */
+        /**********************************************/
+
+        {
+            code: `
+import component from 'omniscient';
+
+const TestComponent = component("TestComponent", {
+    getInitialState() {
+        return { i: 1 };
+    },
+    handleClick(e) {
+        e.preventDefault();
+    },
+    doThing() {
+        console.log("asdasd");
+    },
+    thatThing(a) {
+        return a;
+    }
+}, ({label}) => {    
+    const options = {
+        onThing: this.doThing.bind(this),
+        thatThing: this.thatThing(1)
+    };
+    return <button onClick={this.handleClick}>Test</button>;
+})`.trim(),
+            errors: [{
+                messageId: "omniscient.usage-deprecated"
+            }],
+            output: `
+import { Component } from 'react';
+import component from 'omniscient';
+
+class TestComponent extends Component {
+    constructor(props) {
+        super(props);
+        this.state = { i: 1 };
+    }
+
+    thatThing(a) {
+        return a;
+    }
+
+    doThing() {
+        console.log("asdasd");
+    }
+
+    handleClick(e) {
+        e.preventDefault();
+    }
+
+    render() {
+        const { label } = this.props;
+        const options = {
+            onThing: this.doThing.bind(this),
+            thatThing: this.thatThing(1)
+        };
+        return <button onClick={this.handleClick.bind(this)}>Test</button>;
     }
 }
 

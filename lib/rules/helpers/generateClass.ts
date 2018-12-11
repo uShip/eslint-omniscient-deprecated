@@ -85,16 +85,14 @@ export class ComponentFixer {
             componentOptions = calli.arguments[componentOptionsArg] as ObjectExpression;
         }
 
-        const renderFunc = calli.arguments[calli.arguments.length === 3 ? 2 : 1] as FunctionExpression;
-        const renderBody = this.createRenderBody(renderFunc, sourceCode);
-
         const constructorLines: string[] = [];
-        const bodyProps = [`render() ${renderBody}`];
+        const bodyProps = [];
         const staticProps: string[] = [];
         if (displayName) {
             staticProps.push(`displayName = ${this.smartQuote(displayName)};`);
         }
-
+        
+        let methods: Property[] = [];
         if (componentOptions) {
             for (const property of componentOptions.properties) {
                 if (property.key.type === "Identifier" && property.key.name === "getInitialState") {
@@ -114,7 +112,12 @@ export class ComponentFixer {
                     bodyProps.push(...text);
                 }
             }
+            methods = this.getMethods(componentOptions.properties);
         }
+
+        const renderFunc = calli.arguments[calli.arguments.length === 3 ? 2 : 1] as FunctionExpression;
+        const renderBody = this.createRenderBody(renderFunc, sourceCode, methods);
+        bodyProps.unshift(`render() ${renderBody}`);
 
         const classBody: string[] = [];
         if (anonymousClass) {
@@ -150,6 +153,7 @@ export class ComponentFixer {
         }
 
         if (anonymousClass) {
+            classBody.push(`return ${className};`)
             classBody.push('})()');
         }
 
@@ -316,7 +320,22 @@ export class ComponentFixer {
         return [this.propertyBodyToSource(property, name, sourceCode)];
     }
 
-    private createRenderBody(renderFunc: BaseFunction, sourceCode: SourceCode) {
+    private getMethods(properties: Property[]) {
+        const methods: Property[] = [];
+        for(const prop of properties) {
+            if (prop.method) {
+                methods.push(prop);
+                continue;
+            }
+
+            if (prop.type.includes("FunctionExpression")) {
+                methods.push(prop);
+            }
+        }
+        return methods;
+    }
+
+    private createRenderBody(renderFunc: BaseFunction, sourceCode: SourceCode, methods: Property[]) {
         const hasPropsArgument = renderFunc.params.length > 0;
 
         const isExpression = renderFunc.body.type !== "BlockStatement";
@@ -337,6 +356,32 @@ export class ComponentFixer {
                 propsInit = `const ${sourceCode.getText(propsArg)} = this.props;`
             }
             propsInit += '\n        ';
+        }
+
+        for (const method of methods) {
+            let name: string;
+            if (method.key.type === "Identifier") {
+                name = method.key.name;
+            } else if (method.key.type === "Literal") {
+                name = method.key.raw!;
+            } else {
+                name = sourceCode.getText(method.key);
+            }
+            
+            if (method.key.type === "Literal" || method.computed) {
+                name = `[${name}]`
+            } else {
+                name = `.${name}`
+            }
+
+            const rawName = name;
+
+            // Escape any special characters
+            name = name.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
+
+            renderNewText = renderNewText.replace(new RegExp("this" + name + "[}\w;]", "gm"), (substring) => {
+                return `this${rawName}.bind(this)${substring[substring.length - 1]}`
+            });
         }
 
         return `
