@@ -28,6 +28,7 @@ import component from 'omniscient';
 const TestComponent = component("TestComponent", () => {
     return (<h1>Test</h1>);
 })`.trim(),
+
             errors: [{
                 messageId: "omniscient.usage-deprecated"
             }],
@@ -394,6 +395,68 @@ const TestComponent = component("TestComponent", {
             errors: [{
                 messageId: "omniscient.usage-deprecated"
             }],
+            output: `
+import { Component } from 'react';
+import component from 'omniscient';
+
+class TestComponent extends Component {
+    constructor(props) {
+        super(props);
+        this.state = { i: 1 };
+    }
+
+    thatThing = a => {
+        return a;
+    };
+
+    doThing = () => {
+        console.log("asdasd");
+    };
+
+    handleClick = e => {
+        e.preventDefault();
+    };
+
+    render() {
+        const { label } = this.props;
+        const options = {
+            onThing: this.doThing,
+            thatThing: this.thatThing(1)
+        };
+        return <button onClick={this.handleClick}>Test</button>;
+    }
+}
+
+TestComponent.displayName = "TestComponent";`.trim()
+        },
+        {
+            code: `
+import component from 'omniscient';
+
+const TestComponent = component("TestComponent", {
+    getInitialState() {
+        return { i: 1 };
+    },
+    handleClick(e) {
+        e.preventDefault();
+    },
+    doThing() {
+        console.log("asdasd");
+    },
+    thatThing(a) {
+        return a;
+    }
+}, ({label}) => {    
+    const options = {
+        onThing: this.doThing,
+        thatThing: this.thatThing(1)
+    };
+    return <button onClick={this.handleClick}>Test</button>;
+})`.trim(),
+            errors: [{
+                messageId: "omniscient.usage-deprecated"
+            }],
+            options: [{ useClassProperties: false }],
             output: `
 import { Component } from 'react';
 import component from 'omniscient';

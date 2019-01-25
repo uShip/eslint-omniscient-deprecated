@@ -25,25 +25,29 @@ const omniscientComponentRule: Rule.RuleModule = {
         schema: [{
             type: "object",
             properties: {
-                "componentImport": {
-                    type: "string"
-                },
-                "componentModule": { type: "string" }
-            },
-            required: ["componentImport", "componentModule" ]
+                "componentImport": {  type: "string" },
+                "componentModule": { type: "string" },
+                "useClassProperties": {type: "boolean" },
+            }
         }]
     },
 
     create(context) {
         let options = {
             componentModule: "react",
-            componentImport: "Component"
+            componentImport: "Component",
+            useClassProperties: true
         };
         if (context.options[0]) {
-            options = context.options[0];
+            options = { ...options, ...context.options[0] };
         }
 
-        const componentFixer = new ComponentFixer(context, options.componentModule, options.componentImport);
+        const componentFixer = new ComponentFixer(
+            context, 
+            options.componentModule, 
+            options.componentImport, 
+            options.useClassProperties
+        );
 
         //----------------------------------------------------------------------
         // Public

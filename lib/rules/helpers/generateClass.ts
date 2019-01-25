@@ -6,11 +6,13 @@ export class ComponentFixer {
     private _context: Rule.RuleContext;
     private componentModule: string;
     private componentImportName: string;
+    private useClassProperties: boolean;
 
-    constructor(context: Rule.RuleContext, componentModule: string, componentImportName: string) {
+    constructor(context: Rule.RuleContext, componentModule: string, componentImportName: string, useClassProperties: boolean) {
         this._context = context;
         this.componentModule = componentModule;
         this.componentImportName = componentImportName;
+        this.useClassProperties = useClassProperties;
     }
 
     public isError(calli: CallExpression): boolean {
@@ -273,7 +275,13 @@ export class ComponentFixer {
         if (property.shorthand) {
             body = `${name} = ${name};`;
         } else if (property.method) {
-            body = sourceCode.getText(property);
+            if (this.useClassProperties) {
+                let methodText = sourceCode.getText(property.value);
+                methodText = methodText.replace(/\) \{/, ') => {');
+                body = `${name} = ${methodText}`;
+            } else {
+                body = sourceCode.getText(property);
+            }
         } else {
             // TODO: Special case functions
             body = `${name} = ${sourceCode.getText(property.value)};`;
@@ -374,14 +382,16 @@ export class ComponentFixer {
                 name = `.${name}`
             }
 
-            const rawName = name;
+            if (!this.useClassProperties) {
+                const rawName = name;
+    
+                // Escape any special characters
+                name = name.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
 
-            // Escape any special characters
-            name = name.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
-
-            renderNewText = renderNewText.replace(new RegExp("this" + name + "[}\w;\,]", "gm"), (substring) => {
-                return `this${rawName}.bind(this)${substring[substring.length - 1]}`
-            });
+                renderNewText = renderNewText.replace(new RegExp("this" + name + "[}\w;\,]", "gm"), (substring) => {
+                    return `this${rawName}.bind(this)${substring[substring.length - 1]}`
+                });
+            }
         }
 
         if (isExpression) {
