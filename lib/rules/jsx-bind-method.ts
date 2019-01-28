@@ -36,7 +36,7 @@ const JsxBindMethodRule: Rule.RuleModule = {
     },
 
     create(context) {
-        function bindFixit(node: JSXAttribute) {
+        function bindFixit(node: JSXAttribute): (fixer: Rule.RuleFixer) => Rule.Fix {
             return (fixer: Rule.RuleFixer) => {
                 return fixer.insertTextAfter((node["value"] as any).expression, ".bind(this)");
             };

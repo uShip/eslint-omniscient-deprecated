@@ -1,4 +1,4 @@
-import rule, { IOmniscientComponentRuleOptions } from "../../../../lib/rules/omniscient-component";
+import rule, { OmniscientComponentRuleOptions } from "../../../../lib/rules/omniscient-component";
 import { Linter } from "eslint";
 import jestDiff from "jest-diff";
 import eslintConfig from "../eslintRuleConfig";
@@ -81,6 +81,7 @@ expect.extend({
     },
 });
 
+/* eslint-disable @typescript-eslint/no-namespace */
 declare global {
     namespace jest {
         interface Matchers<R> {
@@ -89,14 +90,15 @@ declare global {
         }
     }
 }
+/* eslint-enable @typescript-eslint/no-namespace */
 
-type fixOptions = {
+interface FixOptions {
     rules?: {
-        ["omniscient-component"]: ["error", Partial<IOmniscientComponentRuleOptions>];
+        ["omniscient-component"]: ["error", Partial<OmniscientComponentRuleOptions>];
     };
-};
+}
 
-const fix = (input: string, options: fixOptions = {}) => {
+const fix = (input: string, options: FixOptions = {}): Linter.FixReport => {
     return linter.verifyAndFix(input, { ...omniscientConfig, ...options });
 };
 

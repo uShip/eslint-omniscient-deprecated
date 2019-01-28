@@ -3,7 +3,6 @@ import {
     Program,
     ImportDeclaration,
     CallExpression,
-    Literal,
     Node as EsNode,
     Identifier,
     BaseFunction,
@@ -13,15 +12,15 @@ import {
     ReturnStatement,
 } from "estree";
 import prettier from "prettier";
-import { IOmniscientComponentRuleOptions } from "../omniscient-component";
+import { OmniscientComponentRuleOptions } from "../omniscient-component";
 
-type ComponentFixerOptions = IOmniscientComponentRuleOptions;
+type ComponentFixerOptions = OmniscientComponentRuleOptions;
 
 export class ComponentFixer {
     private _context: Rule.RuleContext;
     private _options: ComponentFixerOptions;
 
-    constructor(context: Rule.RuleContext, options: ComponentFixerOptions) {
+    public constructor(context: Rule.RuleContext, options: ComponentFixerOptions) {
         this._context = context;
         this._options = options;
     }
@@ -72,9 +71,7 @@ export class ComponentFixer {
         return false;
     }
 
-    public processCallSite(calli: CallExpression) {}
-
-    public getFixit(calli: CallExpression) {
+    public getFixit(calli: CallExpression): (fixer: Rule.RuleFixer) => Rule.Fix | Rule.Fix[] {
         return (fixer: Rule.RuleFixer) => this.fix(calli, fixer);
     }
 
@@ -170,7 +167,7 @@ export class ComponentFixer {
             classBody.push("})()");
         }
 
-        const fixits: Array<Rule.Fix> = [];
+        const fixits: Rule.Fix[] = [];
 
         if (imports.importFixer) {
             fixits.push(imports.importFixer);
@@ -179,7 +176,7 @@ export class ComponentFixer {
         return fixits;
     }
 
-    private getOmniscientImport() {
+    private getOmniscientImport(): ImportDeclaration | undefined | null {
         const nodeVariables = this._context.getAncestors();
         const scriptContext = nodeVariables[0];
         const imports: ImportDeclaration[] = (scriptContext as Program).body.filter(
@@ -194,7 +191,7 @@ export class ComponentFixer {
         });
     }
 
-    private getOmniscientImportName() {
+    private getOmniscientImportName(): string | null {
         const omniscient = this.getOmniscientImport();
 
         if (!omniscient) {
@@ -265,7 +262,7 @@ export class ComponentFixer {
         return { importFixer: null, defaultImport: null, imported: null };
     }
 
-    private getComponentNames(componentCall: CallExpression) {
+    private getComponentNames(componentCall: CallExpression): { displayName: string | null; className: string } {
         const sourceCode = this._context.getSourceCode();
 
         // Does this component have a display name?
@@ -289,7 +286,7 @@ export class ComponentFixer {
         }
     }
 
-    private propertyBodyToSource(property: Property, name: string, sourceCode: SourceCode) {
+    private propertyBodyToSource(property: Property, name: string, sourceCode: SourceCode): string {
         let body = "";
         if (property.shorthand) {
             body = `${name} = ${name};`;
@@ -311,7 +308,7 @@ export class ComponentFixer {
     private mapMixinToProperty(property: Property): string[] {
         const sourceCode = this._context.getSourceCode();
 
-        let name: string = "";
+        let name = "";
         const key = property.key;
         switch (key.type) {
             case "Literal":
@@ -347,7 +344,7 @@ export class ComponentFixer {
         return [this.propertyBodyToSource(property, name, sourceCode)];
     }
 
-    private getMethods(properties: Property[]) {
+    private getMethods(properties: Property[]): Property[] {
         const methods: Property[] = [];
         for (const prop of properties) {
             if (prop.method) {
@@ -362,7 +359,7 @@ export class ComponentFixer {
         return methods;
     }
 
-    private createRenderBody(renderFunc: BaseFunction, sourceCode: SourceCode, methods: Property[]) {
+    private createRenderBody(renderFunc: BaseFunction, sourceCode: SourceCode, methods: Property[]): string {
         const hasPropsArgument = renderFunc.params.length > 0;
 
         const isExpression = renderFunc.body.type !== "BlockStatement";
@@ -423,7 +420,7 @@ export class ComponentFixer {
 }`.trim();
     }
 
-    private formatAndReplace(callExpression: CallExpression, fixer: Rule.RuleFixer, newBody: string) {
+    private formatAndReplace(callExpression: CallExpression, fixer: Rule.RuleFixer, newBody: string): Rule.Fix {
         let parent = callExpression as any;
         while (parent.parent && parent.parent.type !== "Program" && parent.parent.type !== "ReturnStatement") {
             parent = parent.parent;
@@ -445,14 +442,14 @@ export class ComponentFixer {
         return fixer.replaceText(parent, formattedBody);
     }
 
-    private stripQuotes(line: string) {
+    private stripQuotes(line: string): string {
         if (line.startsWith(`'`) || line.startsWith(`"`) || line.startsWith("`")) {
             return line.replace(/^[\'\"\`]/gm, "").replace(/[\'\"\`]$/gm, "");
         }
         return line;
     }
 
-    private smartQuote(text: string) {
+    private smartQuote(text: string): string {
         const quoteMarks = text.includes(`"`) ? (text.includes(`'`) ? "`" : `'`) : '"';
         return `${quoteMarks}${text}${quoteMarks}`;
     }

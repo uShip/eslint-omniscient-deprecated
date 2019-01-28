@@ -10,7 +10,7 @@ import { CallExpression } from "estree";
 //------------------------------------------------------------------------------
 // Rule Definition
 //------------------------------------------------------------------------------
-export interface IOmniscientComponentRuleOptions {
+export interface OmniscientComponentRuleOptions {
     componentModule: string;
     componentImport: string;
     pureComponentModule: string;
@@ -47,7 +47,7 @@ const omniscientComponentRule: Rule.RuleModule = {
     },
 
     create(context) {
-        let options: IOmniscientComponentRuleOptions = {
+        let options: OmniscientComponentRuleOptions = {
             componentModule: "react",
             componentImport: "Component",
             pureComponentModule: "react",
