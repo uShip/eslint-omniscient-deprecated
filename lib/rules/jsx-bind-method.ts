@@ -17,7 +17,7 @@ interface JSXIdentifier extends BaseNode, BaseExpression, BasePattern {
 }
 
 interface JSXExpressionContainer extends BaseStatement {
-    type: "JSXExpressionContainer"
+    type: "JSXExpressionContainer";
     expression: Expression;
 }
 
@@ -26,25 +26,26 @@ const JsxBindMethodRule: Rule.RuleModule = {
         docs: {
             description: "Methods that are passed into JSX expression should bind this.",
             category: "JSX Gotchas",
-            recommended: true
+            recommended: true,
         },
         fixable: "code",
         messages: {
-            "omniscient.conversion-issues.jsx-bind": "Make sure that you're properly binding methods to this `this` when passing them into JSX attributes."
-        }
+            "omniscient.conversion-issues.jsx-bind":
+                "Make sure that you're properly binding methods to this `this` when passing them into JSX attributes.",
+        },
     },
 
     create(context) {
         function bindFixit(node: JSXAttribute) {
             return (fixer: Rule.RuleFixer) => {
                 return fixer.insertTextAfter((node["value"] as any).expression, ".bind(this)");
-            }
+            };
         }
 
         return {
             JSXAttribute(node: ESTree.Node) {
-                const jsx = node as any as JSXAttribute;
-                if (jsx.name.type !== "JSXIdentifier" || !jsx.name.name.startsWith('on')) {
+                const jsx = (node as any) as JSXAttribute;
+                if (jsx.name.type !== "JSXIdentifier" || !jsx.name.name.startsWith("on")) {
                     return;
                 }
 
@@ -60,12 +61,12 @@ const JsxBindMethodRule: Rule.RuleModule = {
                 context.report({
                     messageId: "omniscient.conversion-issues.jsx-bind",
                     node: node,
-                    fix: bindFixit(jsx)
+                    fix: bindFixit(jsx),
                 });
                 return;
-            }
+            },
         };
-    }
+    },
 };
 
 export default JsxBindMethodRule;

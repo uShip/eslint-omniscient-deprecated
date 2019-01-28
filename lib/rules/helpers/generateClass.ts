@@ -1,18 +1,29 @@
 import { Rule, SourceCode } from "eslint";
-import { Program, ImportDeclaration, CallExpression, Literal, Node as EsNode, Identifier, BaseFunction, ObjectExpression, FunctionExpression, Property, ReturnStatement } from "estree";
-import prettier from 'prettier';
+import {
+    Program,
+    ImportDeclaration,
+    CallExpression,
+    Literal,
+    Node as EsNode,
+    Identifier,
+    BaseFunction,
+    ObjectExpression,
+    FunctionExpression,
+    Property,
+    ReturnStatement,
+} from "estree";
+import prettier from "prettier";
+import { IOmniscientComponentRuleOptions } from "../omniscient-component";
+
+type ComponentFixerOptions = IOmniscientComponentRuleOptions;
 
 export class ComponentFixer {
     private _context: Rule.RuleContext;
-    private componentModule: string;
-    private componentImportName: string;
-    private useClassProperties: boolean;
+    private _options: ComponentFixerOptions;
 
-    constructor(context: Rule.RuleContext, componentModule: string, componentImportName: string, useClassProperties: boolean) {
+    constructor(context: Rule.RuleContext, options: ComponentFixerOptions) {
         this._context = context;
-        this.componentModule = componentModule;
-        this.componentImportName = componentImportName;
-        this.useClassProperties = useClassProperties;
+        this._options = options;
     }
 
     public isError(calli: CallExpression): boolean {
@@ -30,7 +41,7 @@ export class ComponentFixer {
     public canFix(calli: CallExpression): boolean {
         const parent = (calli as any)["parent"] as EsNode;
         if (parent.type !== "VariableDeclarator" && parent.type !== "ReturnStatement") {
-            return false
+            return false;
         }
 
         if (calli.arguments.length === 2) {
@@ -61,9 +72,7 @@ export class ComponentFixer {
         return false;
     }
 
-    public processCallSite(calli: CallExpression) {
-
-    }
+    public processCallSite(calli: CallExpression) {}
 
     public getFixit(calli: CallExpression) {
         return (fixer: Rule.RuleFixer) => this.fix(calli, fixer);
@@ -74,11 +83,12 @@ export class ComponentFixer {
 
         const { displayName, className } = this.getComponentNames(calli);
         const imports = this.getBaseComponentFixitAndNames(fixer);
-        const importName = imports.imported ? imports.imported : `${(imports.defaultImport || "React")}.Component`;
+        const importName = imports.imported ? imports.imported : `${imports.defaultImport || "React"}.Component`;
         const anonymousClass = className === "AnonymousComponent";
 
         let componentOptions: ObjectExpression | null = null;
-        const componentOptionsArg = !displayName && calli.arguments.length === 2 ? 0 : (calli.arguments.length === 3 ? 1 : -1);
+        const componentOptionsArg =
+            !displayName && calli.arguments.length === 2 ? 0 : calli.arguments.length === 3 ? 1 : -1;
         if (componentOptionsArg >= 0) {
             if (calli.arguments[componentOptionsArg].type !== "ObjectExpression") {
                 console.debug("Non-object expressions not support.");
@@ -93,17 +103,19 @@ export class ComponentFixer {
         if (displayName) {
             staticProps.push(`displayName = ${this.smartQuote(displayName)};`);
         }
-        
+
         let methods: Property[] = [];
         if (componentOptions) {
             for (const property of componentOptions.properties) {
                 if (property.key.type === "Identifier" && property.key.name === "getInitialState") {
                     const body = property.value;
                     if (body.type !== "FunctionExpression" || body.body.type !== "BlockStatement") {
-                        bodyProps.push(this.propertyBodyToSource(property, 'getInitialState', sourceCode));
+                        bodyProps.push(this.propertyBodyToSource(property, "getInitialState", sourceCode));
                         constructorLines.push(`this.state = getInitialState();`);
                     } else {
-                        const stateBody = sourceCode.getText(((body as FunctionExpression).body.body as [ReturnStatement])[0].argument!)
+                        const stateBody = sourceCode.getText(
+                            ((body as FunctionExpression).body.body as [ReturnStatement])[0].argument!
+                        );
                         constructorLines.push(`this.state = ${stateBody};`);
                     }
                     continue;
@@ -125,38 +137,37 @@ export class ComponentFixer {
         if (anonymousClass) {
             classBody.push(`(() => {`);
         }
-        
+
         classBody.push(`class ${className} extends ${importName} {`);
-        
 
         if (constructorLines.length > 0) {
-            classBody.push('constructor(props) {');
-            classBody.push('super(props);')
+            classBody.push("constructor(props) {");
+            classBody.push("super(props);");
             for (const constructorLine of constructorLines) {
                 classBody.push(constructorLine);
             }
-            classBody.push('}');
-            classBody.push('');
+            classBody.push("}");
+            classBody.push("");
         }
 
         while (bodyProps.length > 0) {
             const next = bodyProps.pop()!;
             classBody.push(next);
             if (bodyProps.length > 0) {
-                classBody.push('');
+                classBody.push("");
             }
         }
 
-        classBody.push('}');
-        classBody.push('');
+        classBody.push("}");
+        classBody.push("");
 
         for (const staticProp of staticProps) {
             classBody.push(`${className}.${staticProp}`);
         }
 
         if (anonymousClass) {
-            classBody.push(`return ${className};`)
-            classBody.push('})()');
+            classBody.push(`return ${className};`);
+            classBody.push("})()");
         }
 
         const fixits: Array<Rule.Fix> = [];
@@ -164,19 +175,21 @@ export class ComponentFixer {
         if (imports.importFixer) {
             fixits.push(imports.importFixer);
         }
-        fixits.push(this.formatAndReplace(calli, fixer, classBody.join('\n')));
+        fixits.push(this.formatAndReplace(calli, fixer, classBody.join("\n")));
         return fixits;
     }
 
     private getOmniscientImport() {
         const nodeVariables = this._context.getAncestors();
         const scriptContext = nodeVariables[0];
-        const imports: ImportDeclaration[] = (scriptContext as Program).body.filter(node => node.type === "ImportDeclaration") as ImportDeclaration[];
+        const imports: ImportDeclaration[] = (scriptContext as Program).body.filter(
+            node => node.type === "ImportDeclaration"
+        ) as ImportDeclaration[];
         if (imports.length === 0) {
             return null;
         }
 
-        return imports.find((node) => {
+        return imports.find(node => {
             return node.source.value === "omniscient";
         });
     }
@@ -197,7 +210,9 @@ export class ComponentFixer {
         return null;
     }
 
-    private getBaseComponentFixitAndNames(fixer: Rule.RuleFixer): { importFixer: Rule.Fix | null; defaultImport: string | null; imported: string | null } {
+    private getBaseComponentFixitAndNames(
+        fixer: Rule.RuleFixer
+    ): { importFixer: Rule.Fix | null; defaultImport: string | null; imported: string | null } {
         const root = this._context.getAncestors()[0];
         if (root.type !== "Program") {
             return { importFixer: null, defaultImport: null, imported: null };
@@ -209,7 +224,7 @@ export class ComponentFixer {
                 continue;
             }
 
-            if (child.source.value !== this.componentModule) {
+            if (child.source.value !== this._options.componentModule) {
                 continue;
             }
             baseImportDeclaration = child;
@@ -217,8 +232,11 @@ export class ComponentFixer {
 
         // TODO: Take into account scope conflict aka HOC which take a Component param
         if (!baseImportDeclaration) {
-            const fix: Rule.Fix = { range: [0,0], text: `import { ${this.componentImportName} } from '${this.componentModule}';\n` };
-            return { importFixer: fix, defaultImport: null, imported: this.componentImportName };
+            const fix: Rule.Fix = {
+                range: [0, 0],
+                text: `import { ${this._options.componentImport} } from '${this._options.componentModule}';\n`,
+            };
+            return { importFixer: fix, defaultImport: null, imported: this._options.componentImport };
         }
 
         let defaultImport: string | null = null;
@@ -228,7 +246,7 @@ export class ComponentFixer {
             if (specifier.type === "ImportDefaultSpecifier") {
                 defaultImport = specifier.local.name;
             } else if (specifier.type === "ImportSpecifier") {
-                if (specifier.imported.name === this.componentImportName) {
+                if (specifier.imported.name === this._options.componentImport) {
                     return { importFixer: null, defaultImport: null, imported: specifier.local.name };
                 }
                 lastImportSpecifier = specifier.range!;
@@ -237,47 +255,48 @@ export class ComponentFixer {
 
         if (lastImportSpecifier) {
             return {
-                importFixer: fixer.insertTextAfterRange(lastImportSpecifier, `, ${this.componentImportName}`),
+                importFixer: fixer.insertTextAfterRange(lastImportSpecifier, `, ${this._options.componentImport}`),
                 defaultImport: null,
-                imported: this.componentImportName
+                imported: this._options.componentImport,
             };
         } else if (defaultImport) {
-            return { importFixer: null, defaultImport, imported: null };   
+            return { importFixer: null, defaultImport, imported: null };
         }
         return { importFixer: null, defaultImport: null, imported: null };
     }
 
-    
     private getComponentNames(componentCall: CallExpression) {
         const sourceCode = this._context.getSourceCode();
 
         // Does this component have a display name?
         if (componentCall.arguments[0].type === "ObjectExpression") {
             const parent = (componentCall as any)["parent"] as EsNode;
-            const className = parent.type === "VariableDeclarator" ? (parent.id as Identifier).name : "AnonymousComponent";
+            const className =
+                parent.type === "VariableDeclarator" ? (parent.id as Identifier).name : "AnonymousComponent";
             return {
                 displayName: null,
-                className
+                className,
             };
         } else {
             const displayName = this.stripQuotes(sourceCode.getText(componentCall.arguments[0]));
             const parent = (componentCall as any)["parent"] as EsNode;
-            const className = parent.type === "VariableDeclarator" ? (parent.id as Identifier).name : "AnonymousComponent";
+            const className =
+                parent.type === "VariableDeclarator" ? (parent.id as Identifier).name : "AnonymousComponent";
             return {
                 displayName,
-                className
+                className,
             };
         }
     }
 
-    private propertyBodyToSource(property: Property, name: string, sourceCode: SourceCode) {            
-        let body = '';
+    private propertyBodyToSource(property: Property, name: string, sourceCode: SourceCode) {
+        let body = "";
         if (property.shorthand) {
             body = `${name} = ${name};`;
         } else if (property.method) {
-            if (this.useClassProperties) {
+            if (this._options.useClassProperties) {
                 let methodText = sourceCode.getText(property.value);
-                methodText = methodText.replace(/\) \{/, ') => {');
+                methodText = methodText.replace(/\) \{/, ") => {");
                 body = `${name} = ${methodText}`;
             } else {
                 body = sourceCode.getText(property);
@@ -288,11 +307,11 @@ export class ComponentFixer {
         }
         return body;
     }
-        
+
     private mapMixinToProperty(property: Property): string[] {
         const sourceCode = this._context.getSourceCode();
-        
-        let name: string = '';
+
+        let name: string = "";
         const key = property.key;
         switch (key.type) {
             case "Literal":
@@ -308,9 +327,9 @@ export class ComponentFixer {
         if (property.computed) {
             name = `[${name}]`;
         }
-        
+
         if (name === "propTypes") {
-            name = `static ${name}`
+            name = `static ${name}`;
         }
 
         if (name === "getDefaultProps") {
@@ -318,19 +337,19 @@ export class ComponentFixer {
             if (body.type !== "FunctionExpression" || body.body.type !== "BlockStatement") {
                 return [
                     `static defaultProps = ${name}();`,
-                    this.propertyBodyToSource(property, `static ${name}`, sourceCode)
-                ]
+                    this.propertyBodyToSource(property, `static ${name}`, sourceCode),
+                ];
             } else if (body.body.body[0].type !== "ReturnStatement") {
                 return [`static get defaultProps${sourceCode.getText(body)}`];
             }
-            return [`static defaultProps = ${sourceCode.getText((body.body.body as [ReturnStatement])[0].argument!)};`]
+            return [`static defaultProps = ${sourceCode.getText((body.body.body as [ReturnStatement])[0].argument!)};`];
         }
         return [this.propertyBodyToSource(property, name, sourceCode)];
     }
 
     private getMethods(properties: Property[]) {
         const methods: Property[] = [];
-        for(const prop of properties) {
+        for (const prop of properties) {
             if (prop.method) {
                 methods.push(prop);
                 continue;
@@ -349,21 +368,21 @@ export class ComponentFixer {
         const isExpression = renderFunc.body.type !== "BlockStatement";
         const renderBodySource = sourceCode.getText(renderFunc.body);
 
-        let renderNewText = renderBodySource.split('\n').join('\n    ');
+        let renderNewText = renderBodySource.split("\n").join("\n    ");
         if (!isExpression) {
             renderNewText = renderNewText.replace(/^\s*{\s*/g, "");
             renderNewText = renderNewText.replace(/\s*}\s*$/g, "");
         }
 
-        let propsInit = '';
+        let propsInit = "";
         if (hasPropsArgument) {
             const propsArg = renderFunc.params[0];
             if (propsArg.type === "Identifier") {
                 propsInit = `const ${propsArg.name} = this.props;`;
             } else if (propsArg.type === "ObjectPattern") {
-                propsInit = `const ${sourceCode.getText(propsArg)} = this.props;`
+                propsInit = `const ${sourceCode.getText(propsArg)} = this.props;`;
             }
-            propsInit += '\n        ';
+            propsInit += "\n        ";
         }
 
         for (const method of methods) {
@@ -375,21 +394,21 @@ export class ComponentFixer {
             } else {
                 name = sourceCode.getText(method.key);
             }
-            
+
             if (method.key.type === "Literal" || method.computed) {
-                name = `[${name}]`
+                name = `[${name}]`;
             } else {
-                name = `.${name}`
+                name = `.${name}`;
             }
 
-            if (!this.useClassProperties) {
+            if (!this._options.useClassProperties) {
                 const rawName = name;
-    
-                // Escape any special characters
-                name = name.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
 
-                renderNewText = renderNewText.replace(new RegExp("this" + name + "[}\w;\,]", "gm"), (substring) => {
-                    return `this${rawName}.bind(this)${substring[substring.length - 1]}`
+                // Escape any special characters
+                name = name.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
+
+                renderNewText = renderNewText.replace(new RegExp("this" + name + "[}w;,]", "gm"), substring => {
+                    return `this${rawName}.bind(this)${substring[substring.length - 1]}`;
                 });
             }
         }
@@ -401,7 +420,7 @@ export class ComponentFixer {
         return `
 {
     ${propsInit}${renderNewText}
-}`.trim();            
+}`.trim();
     }
 
     private formatAndReplace(callExpression: CallExpression, fixer: Rule.RuleFixer, newBody: string) {
@@ -412,32 +431,29 @@ export class ComponentFixer {
 
         const anonymousClass = parent.parent.type === "ReturnStatement";
 
-        let formattedBody = prettier.format(newBody, {
-            parser: 'babylon',
-            tabWidth: 4
-        }).trim();
-        
+        let formattedBody = prettier
+            .format(newBody, {
+                parser: "babylon",
+                tabWidth: 4,
+            })
+            .trim();
+
         if (anonymousClass) {
-            formattedBody = formattedBody.replace(/\;$/, '');
+            formattedBody = formattedBody.replace(/\;$/, "");
         }
 
         return fixer.replaceText(parent, formattedBody);
     }
 
     private stripQuotes(line: string) {
-        if (line.startsWith(`'`) || line.startsWith(`"`) || line.startsWith('`')) {
-            return line.replace(/^[\'\"\`]/gm, '').replace(/[\'\"\`]$/gm, '');
+        if (line.startsWith(`'`) || line.startsWith(`"`) || line.startsWith("`")) {
+            return line.replace(/^[\'\"\`]/gm, "").replace(/[\'\"\`]$/gm, "");
         }
         return line;
     }
-    
-    private smartQuote(text: string) {
-        const quoteMarks = text.includes(`"`) 
-            ? text.includes(`'`) 
-                ? '`' 
-                    : `'` 
-            : '"';
-        return `${quoteMarks}${text}${quoteMarks}`;
 
+    private smartQuote(text: string) {
+        const quoteMarks = text.includes(`"`) ? (text.includes(`'`) ? "`" : `'`) : '"';
+        return `${quoteMarks}${text}${quoteMarks}`;
     }
 }

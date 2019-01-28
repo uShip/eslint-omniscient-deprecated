@@ -10,6 +10,14 @@ import { CallExpression } from "estree";
 //------------------------------------------------------------------------------
 // Rule Definition
 //------------------------------------------------------------------------------
+export interface IOmniscientComponentRuleOptions {
+    componentModule: string;
+    componentImport: string;
+    pureComponentModule: string;
+    pureComponentImport: string;
+    canUseReactMemo: boolean;
+    useClassProperties: boolean;
+}
 
 const omniscientComponentRule: Rule.RuleModule = {
     meta: {
@@ -20,41 +28,46 @@ const omniscientComponentRule: Rule.RuleModule = {
         },
         fixable: "code",
         messages: {
-            "omniscient.usage-deprecated": "Usage of omniscient components is deprecated. You should use an immutable compatible component instead.",
+            "omniscient.usage-deprecated":
+                "Usage of omniscient components is deprecated. You should use an immutable compatible component instead.",
         },
-        schema: [{
-            type: "object",
-            properties: {
-                "componentImport": {  type: "string" },
-                "componentModule": { type: "string" },
-                "useClassProperties": {type: "boolean" },
-            }
-        }]
+        schema: [
+            {
+                type: "object",
+                properties: {
+                    componentImport: { type: "string" },
+                    componentModule: { type: "string" },
+                    pureComponentModule: { type: "string" },
+                    pureComponentImport: { type: "string" },
+                    canUseReactMemo: { type: "boolean" },
+                    useClassProperties: { type: "boolean" },
+                },
+            },
+        ],
     },
 
     create(context) {
-        let options = {
+        let options: IOmniscientComponentRuleOptions = {
             componentModule: "react",
             componentImport: "Component",
-            useClassProperties: true
+            pureComponentModule: "react",
+            pureComponentImport: "PureComponent",
+            canUseReactMemo: false,
+            useClassProperties: true,
         };
+
         if (context.options[0]) {
             options = { ...options, ...context.options[0] };
         }
 
-        const componentFixer = new ComponentFixer(
-            context, 
-            options.componentModule, 
-            options.componentImport, 
-            options.useClassProperties
-        );
+        const componentFixer = new ComponentFixer(context, options);
 
         //----------------------------------------------------------------------
         // Public
         //----------------------------------------------------------------------
 
         return {
-            "CallExpression": function(node) {
+            CallExpression: function(node) {
                 const calli = node as CallExpression;
                 if (!componentFixer.isError(calli)) {
                     return;
@@ -64,19 +77,19 @@ const omniscientComponentRule: Rule.RuleModule = {
                     context.report({
                         messageId: "omniscient.usage-deprecated",
                         node: node,
-                        fix: componentFixer.getFixit(calli) as any
+                        fix: componentFixer.getFixit(calli) as any,
                     });
                 } else {
                     context.report({
                         node: node,
-                        messageId: "omniscient.usage-deprecated"
+                        messageId: "omniscient.usage-deprecated",
                     });
                 }
 
                 return;
-            }
+            },
         };
-    }
+    },
 };
 
 export default omniscientComponentRule;

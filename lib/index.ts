@@ -4,14 +4,14 @@
  */
 "use strict";
 
-import omniscientComponentRule from './rules/omniscient-component';
-import jsxBindMethod from './rules/jsx-bind-method';
+import omniscientComponentRule from "./rules/omniscient-component";
+import jsxBindMethod from "./rules/jsx-bind-method";
 
 const plugin = {
     rules: {
-        "component-deprecated":  omniscientComponentRule,        
-        "jsx-bind-method":  jsxBindMethod
-    }
+        "component-deprecated": omniscientComponentRule,
+        "jsx-bind-method": jsxBindMethod,
+    },
 };
 
 module.exports = plugin;
