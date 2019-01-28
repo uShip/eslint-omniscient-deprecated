@@ -1,5 +1,5 @@
 import { Rule } from "eslint";
-import { ComponentFixer } from "./helpers/generateClass";
+import { ComponentFixer } from "./helpers/ComponentFixer";
 import { CallExpression } from "estree";
 
 /**
@@ -11,11 +11,56 @@ import { CallExpression } from "estree";
 // Rule Definition
 //------------------------------------------------------------------------------
 export interface OmniscientComponentRuleOptions {
+    /**
+     * The module to use for components that fail the immutable hueristic.
+     * @default "React"
+     */
     componentModule: string;
+    /**
+     * The name of the import to use for components that fail the immutable hueristic.
+     * @default "Component"
+     */
     componentImport: string;
-    pureComponentModule: string;
-    pureComponentImport: string;
-    canUseReactMemo: boolean;
+    /**
+     * The module to use for components that pass the immutable hueristic,
+     * but have mixins.
+     * Ex: pureComponentModule: "@uship/components"
+     */
+    pureComponentModule: string | null;
+    /**
+     * The name of the import to use for components that pass the immutable hueristic,
+     * but have mixins. If not provided, falls back to componentImport with shouldComponentUpdate
+     * set to shouldUpdateImport.
+     * This import is assumed to have it's own Immutable.js compatible
+     * shouldComponentUpdate implementation. Useed
+     */
+    pureComponentImport: string | null;
+    /**
+     * The module to use for components that pass an immutable hueristic and have no mixins.
+     */
+    memoModule: string | null;
+    /**
+     * The name of the import to use for components that pass an immutable hueristic and have no mixins.
+     */
+    memoImport: string | null;
+    /**
+     * The module in which resides a shouldComponentUpdate function
+     * that can handle Immutable.js state and prop properties.
+     */
+    shouldUpdateModule: string;
+    /**
+     * The name of the imported shouldComponentUpdate function that
+     * can handle Immutable.js state and prop properties.
+     * Used by memoImport when an omniscient component has no mixins,
+     * and componentImport if one does and no pureComponentImport was
+     * provided.
+     */
+    shouldUpdateImport: string;
+    /**
+     * Whether or not fix render `this` issues by using class properties
+     * or by attempting to apply a `.bind(this)` hueristic.
+     * @default true
+     */
     useClassProperties: boolean;
 }
 
@@ -39,9 +84,13 @@ const omniscientComponentRule: Rule.RuleModule = {
                     componentModule: { type: "string" },
                     pureComponentModule: { type: "string" },
                     pureComponentImport: { type: "string" },
-                    canUseReactMemo: { type: "boolean" },
+                    memoModule: { type: "string" },
+                    memoImport: { type: "string" },
+                    shouldUpdateModule: { type: "string" },
+                    shouldUpdateImport: { type: "string" },
                     useClassProperties: { type: "boolean" },
                 },
+                required: ["shouldUpdateModule", "shouldUpdateImport"],
             },
         ],
     },
@@ -50,14 +99,21 @@ const omniscientComponentRule: Rule.RuleModule = {
         let options: OmniscientComponentRuleOptions = {
             componentModule: "react",
             componentImport: "Component",
-            pureComponentModule: "react",
-            pureComponentImport: "PureComponent",
-            canUseReactMemo: false,
+            pureComponentModule: null,
+            pureComponentImport: null,
+            memoModule: null,
+            memoImport: null,
+            shouldUpdateModule: null as any,
+            shouldUpdateImport: null as any,
             useClassProperties: true,
         };
 
         if (context.options[0]) {
             options = { ...options, ...context.options[0] };
+        }
+
+        if (options.shouldUpdateImport == null) {
+            throw Error("You must provide a shouldUpdateModule and shouldUpdateImport");
         }
 
         const componentFixer = new ComponentFixer(context, options);

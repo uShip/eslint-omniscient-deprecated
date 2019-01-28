@@ -16,6 +16,7 @@ const TestComponent = component("TestComponent", {
         expect(output).toBeFixed();
         expect(output).toMatchFixOutput(`
 import { Component } from 'react';
+import { immutShouldComponentUpdate } from 'TestModule';
 
 import component from 'omniscient';
 
@@ -24,13 +25,15 @@ class TestComponent extends Component {
         label: PropTypes.string
     };
 
+    shouldComponentUpdate = immutShouldComponentUpdate;
+
     render() {
         const { label } = this.props;
         return <h1>{label}</h1>;
     }
-}
 
-TestComponent.displayName = "TestComponent";`);
+    static displayName = "TestComponent";
+}`);
     });
 
     describe("defaultProps", () => {
@@ -49,19 +52,22 @@ const TestComponent = component("TestComponent", {
             expect(output).toBeFixed();
             expect(output).toMatchFixOutput(`
 import { Component } from 'react';
+import { immutShouldComponentUpdate } from 'TestModule';
 
 import component from 'omniscient';
 
 class TestComponent extends Component {
     static defaultProps = { label: "test" };
 
+    shouldComponentUpdate = immutShouldComponentUpdate;
+
     render() {
         const { label } = this.props;
         return <h1>{label}</h1>;
     }
-}
 
-TestComponent.displayName = "TestComponent";`);
+    static displayName = "TestComponent";
+}`);
         });
 
         it("should handle default props method", () => {
@@ -81,6 +87,7 @@ const TestComponent = component("TestComponent", {
             expect(output).toBeFixed();
             expect(output).toMatchFixOutput(`
 import { Component } from 'react';
+import { immutShouldComponentUpdate } from 'TestModule';
 
 import component from 'omniscient';
 import { getDefaultPropsFor } from 'test';
@@ -91,13 +98,15 @@ class TestComponent extends Component {
         return getDefaultPropsFor(test);
     }
 
+    shouldComponentUpdate = immutShouldComponentUpdate;
+
     render() {
         const { label } = this.props;
         return <h1>{label}</h1>;
     }
-}
 
-TestComponent.displayName = "TestComponent";`);
+    static displayName = "TestComponent";
+}`);
         });
     });
 
@@ -116,6 +125,7 @@ const TestComponent = component("TestComponent", {
         expect(output).toBeFixed();
         expect(output).toMatchFixOutput(`
 import { Component } from 'react';
+import { immutShouldComponentUpdate } from 'TestModule';
 
 import component from 'omniscient';
 
@@ -125,12 +135,14 @@ class TestComponent extends Component {
         this.state = { i: 1 };
     }
 
+    shouldComponentUpdate = immutShouldComponentUpdate;
+
     render() {
         const { label } = this.props;
         return <h1>{label}</h1>;
     }
-}
 
-TestComponent.displayName = "TestComponent";`);
+    static displayName = "TestComponent";
+}`);
     });
 });

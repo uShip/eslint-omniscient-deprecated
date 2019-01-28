@@ -13,6 +13,7 @@ import {
 } from "estree";
 import prettier from "prettier";
 import { OmniscientComponentRuleOptions } from "../omniscient-component";
+import { generateClassComponent, generateFunctionComponent } from "./generateComponent";
 
 type ComponentFixerOptions = OmniscientComponentRuleOptions;
 
@@ -41,6 +42,21 @@ export class ComponentFixer {
         const parent = (calli as any)["parent"] as EsNode;
         if (parent.type !== "VariableDeclarator" && parent.type !== "ReturnStatement") {
             return false;
+        }
+
+        // Probably just typing out the component?
+        if (calli.arguments.length === 0) {
+            return false;
+        }
+
+        // Is the last argument a render expression?
+        if (!calli.arguments[calli.arguments.length - 1].type.includes("Expression")) {
+            return false;
+        }
+
+        // If we're only a render function, we're good.
+        if (calli.arguments.length === 1) {
+            return true;
         }
 
         if (calli.arguments.length === 2) {
@@ -77,13 +93,10 @@ export class ComponentFixer {
 
     public fix(calli: CallExpression, fixer: Rule.RuleFixer): Rule.Fix | Rule.Fix[] {
         const sourceCode = this._context.getSourceCode();
-
         const { displayName, className } = this.getComponentNames(calli);
-        const imports = this.getBaseComponentFixitAndNames(fixer);
-        const importName = imports.imported ? imports.imported : `${imports.defaultImport || "React"}.Component`;
-        const anonymousClass = className === "AnonymousComponent";
 
-        let componentOptions: ObjectExpression | null = null;
+        // Deteremine whether this component has any mixins
+        let componentMixins: ObjectExpression | null = null;
         const componentOptionsArg =
             !displayName && calli.arguments.length === 2 ? 0 : calli.arguments.length === 3 ? 1 : -1;
         if (componentOptionsArg >= 0) {
@@ -91,9 +104,22 @@ export class ComponentFixer {
                 console.debug("Non-object expressions not support.");
                 return [];
             }
-            componentOptions = calli.arguments[componentOptionsArg] as ObjectExpression;
+            componentMixins = calli.arguments[componentOptionsArg] as ObjectExpression;
         }
 
+        // Get component base information
+        const isLikelyMemoizable = this.isLikelyMemoizable(calli);
+        const imports = this.getBaseComponentFixitAndNames(fixer, isLikelyMemoizable, componentMixins == null);
+        if (imports == null) {
+            throw Error("Unable to process imports for file");
+        }
+        const { componentInfo, scuInfo, canUseScu, classForm } = imports;
+        const componentImportName = componentInfo.importModule
+            ? `${componentInfo.importModule}.${componentInfo.importName}`
+            : componentInfo.importName;
+        const anonymousClass = className === "AnonymousComponent";
+
+        // Begin building the actual render body
         const constructorLines: string[] = [];
         const bodyProps = [];
         const staticProps: string[] = [];
@@ -102,8 +128,8 @@ export class ComponentFixer {
         }
 
         let methods: Property[] = [];
-        if (componentOptions) {
-            for (const property of componentOptions.properties) {
+        if (componentMixins) {
+            for (const property of componentMixins.properties) {
                 if (property.key.type === "Identifier" && property.key.name === "getInitialState") {
                     const body = property.value;
                     if (body.type !== "FunctionExpression" || body.body.type !== "BlockStatement") {
@@ -123,56 +149,46 @@ export class ComponentFixer {
                     bodyProps.push(...text);
                 }
             }
-            methods = this.getMethods(componentOptions.properties);
+            methods = this.getMethods(componentMixins.properties);
         }
 
-        const renderFunc = calli.arguments[calli.arguments.length === 3 ? 2 : 1] as FunctionExpression;
+        const renderFunc = calli.arguments[calli.arguments.length - 1] as FunctionExpression;
         const renderBody = this.createRenderBody(renderFunc, sourceCode, methods);
-        bodyProps.unshift(`render() ${renderBody}`);
 
-        const classBody: string[] = [];
-        if (anonymousClass) {
-            classBody.push(`(() => {`);
-        }
-
-        classBody.push(`class ${className} extends ${importName} {`);
-
-        if (constructorLines.length > 0) {
-            classBody.push("constructor(props) {");
-            classBody.push("super(props);");
-            for (const constructorLine of constructorLines) {
-                classBody.push(constructorLine);
-            }
-            classBody.push("}");
-            classBody.push("");
-        }
-
-        while (bodyProps.length > 0) {
-            const next = bodyProps.pop()!;
-            classBody.push(next);
-            if (bodyProps.length > 0) {
-                classBody.push("");
-            }
-        }
-
-        classBody.push("}");
-        classBody.push("");
-
-        for (const staticProp of staticProps) {
-            classBody.push(`${className}.${staticProp}`);
-        }
-
-        if (anonymousClass) {
-            classBody.push(`return ${className};`);
-            classBody.push("})()");
+        let body: string;
+        if (classForm) {
+            body = generateClassComponent(
+                {
+                    name: className,
+                    extendsName: componentImportName,
+                    constructorLines,
+                    wrapped: anonymousClass,
+                    instanceProperties: bodyProps,
+                    staticProperties: staticProps,
+                    renderBody,
+                    shouldUpdateFunction: canUseScu ? scuInfo!.importName : null,
+                },
+                this._options.useClassProperties
+            );
+        } else {
+            body = generateFunctionComponent({
+                name: className,
+                wrapped: anonymousClass,
+                staticProperties: staticProps,
+                renderBody,
+                shouldUpdateFunction: scuInfo!.importName,
+            });
         }
 
         const fixits: Rule.Fix[] = [];
 
-        if (imports.importFixer) {
-            fixits.push(imports.importFixer);
+        if (componentInfo.fixit) {
+            fixits.push(componentInfo.fixit);
         }
-        fixits.push(this.formatAndReplace(calli, fixer, classBody.join("\n")));
+        if (scuInfo && scuInfo.fixit) {
+            fixits.push(scuInfo.fixit);
+        }
+        fixits.push(this.formatAndReplace(calli, fixer, body));
         return fixits;
     }
 
@@ -208,20 +224,73 @@ export class ComponentFixer {
     }
 
     private getBaseComponentFixitAndNames(
-        fixer: Rule.RuleFixer
-    ): { importFixer: Rule.Fix | null; defaultImport: string | null; imported: string | null } {
+        fixer: Rule.RuleFixer,
+        isLikelyMemoizable: boolean,
+        isFunctional: boolean
+    ): {
+        componentInfo: ImportInformation;
+        scuInfo: ImportInformation | null;
+        classForm: boolean;
+        canUseScu: boolean;
+    } | null {
         const root = this._context.getAncestors()[0];
+        let classForm = true;
+        let canUseScu = true;
         if (root.type !== "Program") {
-            return { importFixer: null, defaultImport: null, imported: null };
+            return null;
         }
 
+        let importName: string;
+        let importModule: string;
+        if (isLikelyMemoizable && isFunctional && this._options.memoImport && this._options.memoModule) {
+            importName = this._options.memoImport;
+            importModule = this._options.memoModule;
+            classForm = false;
+        } else if (isLikelyMemoizable) {
+            const usePure = this._options.pureComponentImport != null && this._options.pureComponentImport != null;
+            importName = usePure ? this._options.pureComponentImport! : this._options.componentImport;
+            importModule = usePure ? this._options.pureComponentModule! : this._options.componentModule;
+            canUseScu = !usePure;
+        } else {
+            importName = this._options.componentImport;
+            importModule = this._options.componentModule;
+        }
+
+        const componentInfo = this.getImportAndFixit(fixer, root, importName, importModule);
+        if (componentInfo == null) {
+            return null;
+        }
+
+        let scuInfo: ReturnType<ComponentFixer["getImportAndFixit"]> | null = null;
+        if (canUseScu) {
+            scuInfo = this.getImportAndFixit(
+                fixer,
+                root,
+                this._options.shouldUpdateImport,
+                this._options.shouldUpdateModule
+            );
+        }
+        return {
+            componentInfo,
+            scuInfo,
+            classForm,
+            canUseScu,
+        };
+    }
+
+    private getImportAndFixit(
+        fixer: Rule.RuleFixer,
+        root: Program,
+        importName: string,
+        importModule: string
+    ): ImportInformation | null {
         let baseImportDeclaration: ImportDeclaration | null = null;
         for (const child of root.body) {
             if (child.type !== "ImportDeclaration") {
                 continue;
             }
 
-            if (child.source.value !== this._options.componentModule) {
+            if (child.source.value !== importModule) {
                 continue;
             }
             baseImportDeclaration = child;
@@ -231,9 +300,9 @@ export class ComponentFixer {
         if (!baseImportDeclaration) {
             const fix: Rule.Fix = {
                 range: [0, 0],
-                text: `import { ${this._options.componentImport} } from '${this._options.componentModule}';\n`,
+                text: `import { ${importName} } from '${importModule}';\n`,
             };
-            return { importFixer: fix, defaultImport: null, imported: this._options.componentImport };
+            return { fixit: fix, importName };
         }
 
         let defaultImport: string | null = null;
@@ -243,8 +312,8 @@ export class ComponentFixer {
             if (specifier.type === "ImportDefaultSpecifier") {
                 defaultImport = specifier.local.name;
             } else if (specifier.type === "ImportSpecifier") {
-                if (specifier.imported.name === this._options.componentImport) {
-                    return { importFixer: null, defaultImport: null, imported: specifier.local.name };
+                if (specifier.imported.name === importName) {
+                    return { importName: specifier.local.name };
                 }
                 lastImportSpecifier = specifier.range!;
             }
@@ -252,21 +321,20 @@ export class ComponentFixer {
 
         if (lastImportSpecifier) {
             return {
-                importFixer: fixer.insertTextAfterRange(lastImportSpecifier, `, ${this._options.componentImport}`),
-                defaultImport: null,
-                imported: this._options.componentImport,
+                fixit: fixer.insertTextAfterRange(lastImportSpecifier, `, ${importName}`),
+                importName,
             };
         } else if (defaultImport) {
-            return { importFixer: null, defaultImport, imported: null };
+            return { importModule: defaultImport, importName };
         }
-        return { importFixer: null, defaultImport: null, imported: null };
+        return null;
     }
 
     private getComponentNames(componentCall: CallExpression): { displayName: string | null; className: string } {
         const sourceCode = this._context.getSourceCode();
 
-        // Does this component have a display name?
-        if (componentCall.arguments[0].type === "ObjectExpression") {
+        // Is this a render only component, or does this component have a display name?
+        if (componentCall.arguments.length === 1 || componentCall.arguments[0].type === "ObjectExpression") {
             const parent = (componentCall as any)["parent"] as EsNode;
             const className =
                 parent.type === "VariableDeclarator" ? (parent.id as Identifier).name : "AnonymousComponent";
@@ -275,6 +343,7 @@ export class ComponentFixer {
                 className,
             };
         } else {
+            // We have a display name
             const displayName = this.stripQuotes(sourceCode.getText(componentCall.arguments[0]));
             const parent = (componentCall as any)["parent"] as EsNode;
             const className =
@@ -420,6 +489,10 @@ export class ComponentFixer {
 }`.trim();
     }
 
+    private isLikelyMemoizable(calli: CallExpression): boolean {
+        return false;
+    }
+
     private formatAndReplace(callExpression: CallExpression, fixer: Rule.RuleFixer, newBody: string): Rule.Fix {
         let parent = callExpression as any;
         while (parent.parent && parent.parent.type !== "Program" && parent.parent.type !== "ReturnStatement") {
@@ -453,4 +526,10 @@ export class ComponentFixer {
         const quoteMarks = text.includes(`"`) ? (text.includes(`'`) ? "`" : `'`) : '"';
         return `${quoteMarks}${text}${quoteMarks}`;
     }
+}
+
+interface ImportInformation {
+    importName: string;
+    importModule?: string;
+    fixit?: Rule.Fix;
 }

@@ -18,6 +18,7 @@
         "build:typescript": "tsc",
         "test": "jest",
         "test:debug": "jest --inspect-brk",
+        "test:watch": "jest --watch",
         "prepublishOnly ": "run-s build"
     },
     "devDependencies": {

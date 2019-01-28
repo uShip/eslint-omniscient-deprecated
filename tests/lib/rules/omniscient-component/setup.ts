@@ -6,11 +6,20 @@ import eslintConfig from "../eslintRuleConfig";
 const linter = new Linter();
 linter.defineRule("omniscient-component", rule);
 
+export const ruleName = "omniscient-component";
+export const omniscientComponentConfig = [
+    "error",
+    {
+        shouldUpdateModule: "TestModule",
+        shouldUpdateImport: "immutShouldComponentUpdate",
+    },
+] as ["error", object];
+
 const omniscientConfig = {
     ...eslintConfig,
     ...{
         rules: {
-            "omniscient-component": ["error"] as ["error"],
+            [ruleName]: omniscientComponentConfig,
         },
     },
 };
@@ -57,26 +66,27 @@ expect.extend({
         const expectedOutput = output.trim();
         const diff = jestDiff(actualOutput, expectedOutput, {
             expand: this.expand,
-            bAnnotation: "Fixed",
+            aAnnotation: "Fix Output",
+            bAnnotation: "Expected",
         });
 
         const pass = actualOutput === expectedOutput;
-        const message = pass
+        const message = !pass
             ? () =>
                   this.utils.matcherHint("toMatchFixOutput") +
                   "\n\n" +
                   `Expected fix output:\n` +
-                  `\t${this.utils.printExpected(expectedOutput)}` +
+                  `    ${this.utils.printExpected(expectedOutput)}\n\n` +
                   `Recieved fix output:\n` +
-                  `\t${this.utils.printReceived(actualOutput)}` +
+                  `    ${this.utils.printReceived(actualOutput)}` +
                   (diff ? `\n\nDifference:\n\n${diff}` : "")
             : () =>
                   this.utils.matcherHint("toMatchFixOutput") +
                   "\n\n" +
                   `Expected fix output:\n` +
-                  `\t${this.utils.printExpected(expectedOutput)}` +
+                  `    ${this.utils.printExpected(expectedOutput)}\n\n` +
                   `Recieved fix output:\n` +
-                  `\t${this.utils.printReceived(actualOutput)}`;
+                  `    ${this.utils.printReceived(actualOutput)}`;
         return { actual: actualOutput, message, pass };
     },
 });
@@ -94,7 +104,7 @@ declare global {
 
 interface FixOptions {
     rules?: {
-        ["omniscient-component"]: ["error", Partial<OmniscientComponentRuleOptions>];
+        [ruleName]: ["error", Partial<OmniscientComponentRuleOptions>];
     };
 }
 
@@ -102,4 +112,13 @@ const fix = (input: string, options: FixOptions = {}): Linter.FixReport => {
     return linter.verifyAndFix(input, { ...omniscientConfig, ...options });
 };
 
-export { fix };
+const withRuleOptions = (options: Partial<OmniscientComponentRuleOptions>): FixOptions => {
+    const ruleConfig = ["error", { ...omniscientComponentConfig[1], ...options }] as ["error", object];
+    return {
+        rules: {
+            [ruleName]: ruleConfig,
+        },
+    };
+};
+
+export { fix, withRuleOptions };

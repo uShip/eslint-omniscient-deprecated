@@ -1,6 +1,30 @@
 import { fix } from "./setup";
 
 describe("simple component conversions", () => {
+    it("should convert render only component", () => {
+        const input = `
+import component from 'omniscient';
+
+const TestComponent = component(() => {
+    return (<h1>Test</h1>);
+})`;
+        const output = fix(input);
+        expect(output).toBeFixed();
+        expect(output).toMatchFixOutput(`
+import { Component } from 'react';
+import { immutShouldComponentUpdate } from 'TestModule';
+
+import component from 'omniscient';
+
+class TestComponent extends Component {
+    shouldComponentUpdate = immutShouldComponentUpdate;
+
+    render() {
+        return <h1>Test</h1>;
+    }
+}`);
+    });
+
     it("should convert simple pure component", () => {
         const input = `
 import component from 'omniscient';
@@ -12,16 +36,19 @@ const TestComponent = component("TestComponent", () => {
         expect(output).toBeFixed();
         expect(output).toMatchFixOutput(`
 import { Component } from 'react';
+import { immutShouldComponentUpdate } from 'TestModule';
 
 import component from 'omniscient';
 
 class TestComponent extends Component {
+    shouldComponentUpdate = immutShouldComponentUpdate;
+
     render() {
         return <h1>Test</h1>;
     }
-}
 
-TestComponent.displayName = "TestComponent";`);
+    static displayName = "TestComponent";
+}`);
     });
 
     it("should convert component with raw props", () => {
@@ -35,17 +62,20 @@ return (<h1>{props.name}</h1>);
         expect(output).toBeFixed();
         expect(output).toMatchFixOutput(`
 import { Component } from 'react';
+import { immutShouldComponentUpdate } from 'TestModule';
 
 import component from 'omniscient';
 
 class TestComponent extends Component {
+    shouldComponentUpdate = immutShouldComponentUpdate;
+
     render() {
         const props = this.props;
         return <h1>{props.name}</h1>;
     }
-}
 
-TestComponent.displayName = "TestComponent";`);
+    static displayName = "TestComponent";
+}`);
     });
 
     it("should convert component with destructed props", () => {
@@ -59,17 +89,20 @@ const TestComponent = component("TestComponent", ({a, b}) => {
         expect(output).toBeFixed();
         expect(output).toMatchFixOutput(`
 import { Component } from 'react';
+import { immutShouldComponentUpdate } from 'TestModule';
 
 import component from 'omniscient';
 
 class TestComponent extends Component {
+    shouldComponentUpdate = immutShouldComponentUpdate;
+
     render() {
         const { a, b } = this.props;
         return <h1>{a}</h1>;
     }
-}
 
-TestComponent.displayName = "TestComponent";`);
+    static displayName = "TestComponent";
+}`);
     });
 
     it("should handle nameless components", () => {
@@ -87,6 +120,7 @@ const TestComponent = component({
         expect(output).toBeFixed();
         expect(output).toMatchFixOutput(`
 import { Component } from 'react';
+import { immutShouldComponentUpdate } from 'TestModule';
 
 import component from 'omniscient';
 
@@ -95,6 +129,8 @@ class TestComponent extends Component {
         super(props);
         this.state = { i: 1 };
     }
+
+    shouldComponentUpdate = immutShouldComponentUpdate;
 
     render() {
         const { label } = this.props;
