@@ -1,0 +1,162 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`special cased properties defaultProps should handle default props method 1`] = `
+Object {
+  "fixed": true,
+  "messages": Array [
+    Object {
+      "column": 24,
+      "fatal": true,
+      "line": 25,
+      "message": "Parsing error: Unexpected token =",
+      "ruleId": null,
+      "severity": 2,
+    },
+  ],
+  "output": "import { Component } from 'react';
+import { immutShouldComponentUpdate } from 'TestModule';
+
+import component from 'omniscient';
+import { getDefaultPropsFor } from 'test';
+
+class TestComponent extends Component {
+    static get defaultProps() {
+        const test = 2;
+        return getDefaultPropsFor(test);
+    }
+
+    shouldComponentUpdate(nextProps, nextState) {
+        return (
+            !immutShouldComponentUpdate(this.props, nextProps) ||
+            !immutShouldComponentUpdate(this.state, nextState)
+        );
+    }
+
+    render() {
+        const { label } = this.props;
+        return <h1>{label}</h1>;
+    }
+
+    static displayName = \\"TestComponent\\";
+}",
+}
+`;
+
+exports[`special cased properties defaultProps should handle default props object 1`] = `
+Object {
+  "fixed": true,
+  "messages": Array [
+    Object {
+      "column": 25,
+      "fatal": true,
+      "line": 7,
+      "message": "Parsing error: Unexpected token =",
+      "ruleId": null,
+      "severity": 2,
+    },
+  ],
+  "output": "import { Component } from 'react';
+import { immutShouldComponentUpdate } from 'TestModule';
+
+import component from 'omniscient';
+
+class TestComponent extends Component {
+    static defaultProps = { label: \\"test\\" };
+
+    shouldComponentUpdate(nextProps, nextState) {
+        return (
+            !immutShouldComponentUpdate(this.props, nextProps) ||
+            !immutShouldComponentUpdate(this.state, nextState)
+        );
+    }
+
+    render() {
+        const { label } = this.props;
+        return <h1>{label}</h1>;
+    }
+
+    static displayName = \\"TestComponent\\";
+}",
+}
+`;
+
+exports[`special cased properties should handle initial state 1`] = `
+Object {
+  "fixed": true,
+  "messages": Array [
+    Object {
+      "column": 24,
+      "fatal": true,
+      "line": 24,
+      "message": "Parsing error: Unexpected token =",
+      "ruleId": null,
+      "severity": 2,
+    },
+  ],
+  "output": "import { Component } from 'react';
+import { immutShouldComponentUpdate } from 'TestModule';
+
+import component from 'omniscient';
+
+class TestComponent extends Component {
+    constructor(props) {
+        super(props);
+        this.state = { i: 1 };
+    }
+
+    shouldComponentUpdate(nextProps, nextState) {
+        return (
+            !immutShouldComponentUpdate(this.props, nextProps) ||
+            !immutShouldComponentUpdate(this.state, nextState)
+        );
+    }
+
+    render() {
+        const { label } = this.props;
+        return <h1>{label}</h1>;
+    }
+
+    static displayName = \\"TestComponent\\";
+}",
+}
+`;
+
+exports[`special cased properties should handle propTypes 1`] = `
+Object {
+  "fixed": true,
+  "messages": Array [
+    Object {
+      "column": 22,
+      "fatal": true,
+      "line": 7,
+      "message": "Parsing error: Unexpected token =",
+      "ruleId": null,
+      "severity": 2,
+    },
+  ],
+  "output": "import { Component } from 'react';
+import { immutShouldComponentUpdate } from 'TestModule';
+
+import component from 'omniscient';
+
+class TestComponent extends Component {
+    static propTypes = {
+        label: PropTypes.string
+    };
+
+    shouldComponentUpdate(nextProps, nextState) {
+        return (
+            !immutShouldComponentUpdate(this.props, nextProps) ||
+            !immutShouldComponentUpdate(this.state, nextState)
+        );
+    }
+
+    render() {
+        const { label } = this.props;
+        return <h1>{label}</h1>;
+    }
+
+    static displayName = \\"TestComponent\\";
+}",
+}
+`;

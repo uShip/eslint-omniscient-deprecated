@@ -1,0 +1,106 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`this binding should handle this in render func 1`] = `
+Object {
+  "fixed": true,
+  "messages": Array [
+    Object {
+      "column": 15,
+      "fatal": true,
+      "line": 12,
+      "message": "Parsing error: Unexpected token =",
+      "ruleId": null,
+      "severity": 2,
+    },
+  ],
+  "output": "import { Component } from 'react';
+import { immutShouldComponentUpdate } from 'TestModule';
+
+import component from 'omniscient';
+
+class TestComponent extends Component {
+    constructor(props) {
+        super(props);
+        this.state = { i: 1 };
+    }
+
+    thatThing = a => {
+        return a;
+    };
+
+    doThing = () => {
+        console.log(\\"asdasd\\");
+    };
+
+    handleClick = e => {
+        e.preventDefault();
+    };
+
+    shouldComponentUpdate(nextProps, nextState) {
+        return (
+            !immutShouldComponentUpdate(this.props, nextProps) ||
+            !immutShouldComponentUpdate(this.state, nextState)
+        );
+    }
+
+    render() {
+        const { label } = this.props;
+        const options = {
+            onThing: this.doThing,
+            thatThing: this.thatThing(1)
+        };
+        return <button onClick={this.handleClick}>Test</button>;
+    }
+
+    static displayName = \\"TestComponent\\";
+}",
+}
+`;
+
+exports[`this binding should handle this in render func without class props 1`] = `
+Object {
+  "fixed": true,
+  "messages": Array [],
+  "output": "import { Component } from 'react';
+import { immutShouldComponentUpdate } from 'TestModule';
+
+import component from 'omniscient';
+
+class TestComponent extends Component {
+    constructor(props) {
+        super(props);
+        this.state = { i: 1 };
+    }
+
+    thatThing(a) {
+        return a;
+    }
+
+    doThing() {
+        console.log(\\"asdasd\\");
+    }
+
+    handleClick(e) {
+        e.preventDefault();
+    }
+
+    shouldComponentUpdate(nextProps, nextState) {
+        return (
+            !immutShouldComponentUpdate(this.props, nextProps) ||
+            !immutShouldComponentUpdate(this.state, nextState)
+        );
+    }
+
+    render() {
+        const { label } = this.props;
+        const options = {
+            onThing: this.doThing.bind(this),
+            thatThing: this.thatThing(1)
+        };
+        return <button onClick={this.handleClick.bind(this)}>Test</button>;
+    }
+}
+
+TestComponent.displayName = \\"TestComponent\\";",
+}
+`;

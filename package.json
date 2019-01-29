@@ -11,19 +11,20 @@
     "main": "dist/index.js",
     "scripts": {
         "lint:types": "tsc --noEmit",
-        "lint:rules": "eslint {lib,tests}/**/*.{ts,tsx}",
-        "format": "prettier --write {lib,tests}/**/*.{ts,tsx}",
+        "lint:rules": "eslint lib/**/*.{ts,tsx}",
+        "format": "prettier --write {lib,docs}/**/*.{ts,tsx,md}",
         "build": "run-s clean lint:** build:**",
         "clean": "rimraf ./dist/",
         "build:typescript": "tsc",
         "test": "jest",
-        "test:debug": "jest --inspect-brk",
+        "test:debug": "node --inspect-brk ./node_modules/jest/bin/jest.js --runInBand",
         "test:watch": "jest --watch",
         "prepublishOnly ": "run-s build"
     },
     "devDependencies": {
         "@types/eslint": "^4.16.5",
         "@types/jest": "^23.3.13",
+        "@types/jest-diff": "^20.0.0",
         "@types/node": "^10.12.12",
         "@types/prettier": "^1.15.2",
         "@typescript-eslint/eslint-plugin": "^1.1.0",
@@ -57,11 +58,11 @@
         }
     },
     "lint-staged": {
-        "{docs,lib,tests}/**/*.{json,md}": [
+        "{docs,lib}/**/*.{json,md}": [
             "npm run format",
             "git add"
         ],
-        "{lib,tests}/**/*.{js,ts}": [
+        "lib/**/*.{js,ts}": [
             "yarn format",
             "npm run lint:rules",
             "git add"

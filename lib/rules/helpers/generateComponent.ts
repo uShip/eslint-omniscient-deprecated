@@ -1,17 +1,19 @@
-import prettier from "prettier";
-
 export interface ComponentInformation {
     name: string;
     wrapped: boolean;
     staticProperties: string[];
     renderBody: string;
-    shouldUpdateFunction: string | null;
+    areEqualFunction: string | null;
 }
 
 export interface ClassInformation extends ComponentInformation {
     extendsName: string;
     constructorLines: string[];
     instanceProperties: string[];
+}
+
+export interface FunctionInformation extends ComponentInformation {
+    props: string;
 }
 
 function generateClassComponent(classInfo: ClassInformation, canUseClassProperties: boolean): string {
@@ -27,19 +29,17 @@ function generateClassComponent(classInfo: ClassInformation, canUseClassProperti
         instanceProperties,
         staticProperties,
         renderBody,
-        shouldUpdateFunction,
+        areEqualFunction,
     } = classInfo;
 
-    if (shouldUpdateFunction) {
-        if (canUseClassProperties) {
-            instanceProperties.unshift(`shouldComponentUpdate = ${shouldUpdateFunction};`);
-        } else {
-            const shouldUpdateBody: string[] = [];
-            shouldUpdateBody.push(`shouldComponentUpdate(nextProps, nextState) {`);
-            shouldUpdateBody.push(`return ${shouldUpdateFunction}(nextProps, nextState);`);
-            shouldUpdateBody.push(`}`);
-            instanceProperties.unshift(...shouldUpdateBody.reverse());
-        }
+    if (areEqualFunction) {
+        const shouldUpdateBody: string[] = [];
+        shouldUpdateBody.push(`shouldComponentUpdate(nextProps, nextState) {`);
+        shouldUpdateBody.push(
+            `    return !${areEqualFunction}(this.props, nextProps) || !${areEqualFunction}(this.state, nextState);`
+        );
+        shouldUpdateBody.push(`}`);
+        instanceProperties.unshift(shouldUpdateBody.join("\n"));
     }
     instanceProperties.unshift(`render() ${renderBody}`);
 
@@ -85,8 +85,37 @@ function generateClassComponent(classInfo: ClassInformation, canUseClassProperti
     }
     return classBody.join("\n");
 }
-function generateFunctionComponent(functionInfo: ComponentInformation): string {
-    return "";
+function generateFunctionComponent(functionInfo: FunctionInformation, memo: string | null): string {
+    const funcBody: string[] = [];
+    if (functionInfo.wrapped) {
+        funcBody.push(`(() => {`);
+    }
+
+    const { name, props, staticProperties, renderBody, areEqualFunction } = functionInfo;
+
+    if (memo) {
+        funcBody.push(`const ${name} = ${memo}(function ${name}(${props}) ${renderBody}`);
+    } else {
+        funcBody.push(`function ${name}(${props}) ${renderBody}`);
+    }
+
+    if (memo) {
+        if (areEqualFunction) {
+            funcBody.push(`${funcBody.pop()}, ${areEqualFunction});`);
+        } else {
+            funcBody.push(`${funcBody.pop()});`);
+        }
+    }
+
+    for (const staticProp of staticProperties) {
+        funcBody.push(`${name}.${staticProp}`);
+    }
+
+    if (functionInfo.wrapped) {
+        funcBody.push(`return ${name};`);
+        funcBody.push("})()");
+    }
+    return funcBody.join("\n");
 }
 
 export { generateClassComponent, generateFunctionComponent };

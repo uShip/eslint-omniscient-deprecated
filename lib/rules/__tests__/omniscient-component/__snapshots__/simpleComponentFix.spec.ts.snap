@@ -1,0 +1,162 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`simple component conversions should convert component with destructed props 1`] = `
+Object {
+  "fixed": true,
+  "messages": Array [
+    Object {
+      "column": 24,
+      "fatal": true,
+      "line": 19,
+      "message": "Parsing error: Unexpected token =",
+      "ruleId": null,
+      "severity": 2,
+    },
+  ],
+  "output": "import { Component } from 'react';
+import { immutShouldComponentUpdate } from 'TestModule';
+
+import component from 'omniscient';
+
+class TestComponent extends Component {
+    shouldComponentUpdate(nextProps, nextState) {
+        return (
+            !immutShouldComponentUpdate(this.props, nextProps) ||
+            !immutShouldComponentUpdate(this.state, nextState)
+        );
+    }
+
+    render() {
+        const { a, b } = this.props;
+        return <h1>{a}</h1>;
+    }
+
+    static displayName = \\"TestComponent\\";
+}",
+}
+`;
+
+exports[`simple component conversions should convert component with raw props 1`] = `
+Object {
+  "fixed": true,
+  "messages": Array [
+    Object {
+      "column": 24,
+      "fatal": true,
+      "line": 19,
+      "message": "Parsing error: Unexpected token =",
+      "ruleId": null,
+      "severity": 2,
+    },
+  ],
+  "output": "import { Component } from 'react';
+import { immutShouldComponentUpdate } from 'TestModule';
+
+import component from 'omniscient';
+
+class TestComponent extends Component {
+    shouldComponentUpdate(nextProps, nextState) {
+        return (
+            !immutShouldComponentUpdate(this.props, nextProps) ||
+            !immutShouldComponentUpdate(this.state, nextState)
+        );
+    }
+
+    render() {
+        const props = this.props;
+        return <h1>{props.name}</h1>;
+    }
+
+    static displayName = \\"TestComponent\\";
+}",
+}
+`;
+
+exports[`simple component conversions should convert render only component 1`] = `
+Object {
+  "fixed": true,
+  "messages": Array [],
+  "output": "import { Component } from 'react';
+import { immutShouldComponentUpdate } from 'TestModule';
+
+import component from 'omniscient';
+
+class TestComponent extends Component {
+    shouldComponentUpdate(nextProps, nextState) {
+        return (
+            !immutShouldComponentUpdate(this.props, nextProps) ||
+            !immutShouldComponentUpdate(this.state, nextState)
+        );
+    }
+
+    render() {
+        return <h1>Test</h1>;
+    }
+}",
+}
+`;
+
+exports[`simple component conversions should convert simple pure component 1`] = `
+Object {
+  "fixed": true,
+  "messages": Array [
+    Object {
+      "column": 24,
+      "fatal": true,
+      "line": 18,
+      "message": "Parsing error: Unexpected token =",
+      "ruleId": null,
+      "severity": 2,
+    },
+  ],
+  "output": "import { Component } from 'react';
+import { immutShouldComponentUpdate } from 'TestModule';
+
+import component from 'omniscient';
+
+class TestComponent extends Component {
+    shouldComponentUpdate(nextProps, nextState) {
+        return (
+            !immutShouldComponentUpdate(this.props, nextProps) ||
+            !immutShouldComponentUpdate(this.state, nextState)
+        );
+    }
+
+    render() {
+        return <h1>Test</h1>;
+    }
+
+    static displayName = \\"TestComponent\\";
+}",
+}
+`;
+
+exports[`simple component conversions should handle nameless components 1`] = `
+Object {
+  "fixed": true,
+  "messages": Array [],
+  "output": "import { Component } from 'react';
+import { immutShouldComponentUpdate } from 'TestModule';
+
+import component from 'omniscient';
+
+class TestComponent extends Component {
+    constructor(props) {
+        super(props);
+        this.state = { i: 1 };
+    }
+
+    shouldComponentUpdate(nextProps, nextState) {
+        return (
+            !immutShouldComponentUpdate(this.props, nextProps) ||
+            !immutShouldComponentUpdate(this.state, nextState)
+        );
+    }
+
+    render() {
+        const { label } = this.props;
+        return <h1>{label}</h1>;
+    }
+}",
+}
+`;

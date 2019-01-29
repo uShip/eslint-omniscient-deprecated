@@ -2,9 +2,9 @@
  * @fileoverview Methods that are passed into JSX expression should bind this.
  * @author Richard Simpson
  */
-import rule from "../../../lib/rules/jsx-bind-method";
+import rule from "../jsx-bind-method";
 import { RuleTester } from "eslint";
-import eslintConfig from "./eslintRuleConfig";
+import eslintConfig from "./__setup__/eslintRuleConfig";
 
 var ruleTester = new RuleTester(eslintConfig);
 ruleTester.run("jsx-bind-method", rule, {

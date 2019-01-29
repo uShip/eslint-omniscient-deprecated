@@ -1,0 +1,74 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`generateComponent should generate class component 1`] = `
+"class Test extends Component {
+constructor(props) {
+super(props);
+this.state = {a : 1};
+}
+
+getA = () => { return <h1>Test</h1>; };
+
+shouldComponentUpdate(nextProps, nextState) {
+    return !is(this.props, nextProps) || !is(this.state, nextState);
+}
+
+render() { return this.getA(); }
+
+static displayName = 'Test';
+}
+"
+`;
+
+exports[`generateComponent should generate class component without class properties 1`] = `
+"class Test extends Component {
+constructor(props) {
+super(props);
+this.state = {a : 1};
+}
+
+getA() { return <h1>Test</h1>; };
+
+shouldComponentUpdate(nextProps, nextState) {
+    return !is(this.props, nextProps) || !is(this.state, nextState);
+}
+
+render() { return this.getA().bind(this); }
+}
+
+Test.displayName = 'Test';"
+`;
+
+exports[`generateComponent should generate function component 1`] = `
+"function Test({a}) { return a; }
+Test.displayName = 'Test';"
+`;
+
+exports[`generateComponent should generate memoized function component 1`] = `
+"const Test = React.memo(function Test({a}) { return a; }, is);
+Test.displayName = 'Test';"
+`;
+
+exports[`generateComponent should generate wrapped class component 1`] = `
+"(() => {
+class Test extends Component {
+shouldComponentUpdate(nextProps, nextState) {
+    return !is(this.props, nextProps) || !is(this.state, nextState);
+}
+
+render() { return null; }
+
+static displayName = 'Test';
+}
+
+return Test;
+})()"
+`;
+
+exports[`generateComponent should generate wrapped function component 1`] = `
+"(() => {
+function Test({a}) { return a; }
+Test.displayName = 'Test';
+return Test;
+})()"
+`;

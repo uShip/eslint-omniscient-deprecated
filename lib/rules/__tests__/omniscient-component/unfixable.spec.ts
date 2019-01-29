@@ -1,4 +1,4 @@
-import { fix } from "./setup";
+import { fix } from "./__setup__/setup";
 
 describe("known unfixable code", () => {
     it("shouldn't fix components with multiple mixins", () => {

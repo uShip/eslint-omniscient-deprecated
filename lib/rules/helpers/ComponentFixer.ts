@@ -113,7 +113,7 @@ export class ComponentFixer {
         if (imports == null) {
             throw Error("Unable to process imports for file");
         }
-        const { componentInfo, scuInfo, canUseScu, classForm } = imports;
+        const { componentInfo, areEqualInfo, canUseAreEqual, classForm } = imports;
         const componentImportName = componentInfo.importModule
             ? `${componentInfo.importModule}.${componentInfo.importName}`
             : componentInfo.importName;
@@ -124,7 +124,7 @@ export class ComponentFixer {
         const bodyProps = [];
         const staticProps: string[] = [];
         if (displayName) {
-            staticProps.push(`displayName = ${this.smartQuote(displayName)};`);
+            staticProps.push(`displayName = ${displayName};`);
         }
 
         let methods: Property[] = [];
@@ -166,18 +166,22 @@ export class ComponentFixer {
                     instanceProperties: bodyProps,
                     staticProperties: staticProps,
                     renderBody,
-                    shouldUpdateFunction: canUseScu ? scuInfo!.importName : null,
+                    areEqualFunction: canUseAreEqual ? areEqualInfo!.importName : null,
                 },
                 this._options.useClassProperties
             );
         } else {
-            body = generateFunctionComponent({
-                name: className,
-                wrapped: anonymousClass,
-                staticProperties: staticProps,
-                renderBody,
-                shouldUpdateFunction: scuInfo!.importName,
-            });
+            body = generateFunctionComponent(
+                {
+                    name: className,
+                    wrapped: anonymousClass,
+                    staticProperties: staticProps,
+                    renderBody,
+                    areEqualFunction: canUseAreEqual ? areEqualInfo!.importName : null,
+                    props: "", // TODO
+                },
+                this._options.memoImport
+            );
         }
 
         const fixits: Rule.Fix[] = [];
@@ -185,8 +189,8 @@ export class ComponentFixer {
         if (componentInfo.fixit) {
             fixits.push(componentInfo.fixit);
         }
-        if (scuInfo && scuInfo.fixit) {
-            fixits.push(scuInfo.fixit);
+        if (areEqualInfo && areEqualInfo.fixit) {
+            fixits.push(areEqualInfo.fixit);
         }
         fixits.push(this.formatAndReplace(calli, fixer, body));
         return fixits;
@@ -229,13 +233,13 @@ export class ComponentFixer {
         isFunctional: boolean
     ): {
         componentInfo: ImportInformation;
-        scuInfo: ImportInformation | null;
+        areEqualInfo: ImportInformation | null;
         classForm: boolean;
-        canUseScu: boolean;
+        canUseAreEqual: boolean;
     } | null {
         const root = this._context.getAncestors()[0];
         let classForm = true;
-        let canUseScu = true;
+        let canUseAreEqual = true;
         if (root.type !== "Program") {
             return null;
         }
@@ -250,7 +254,7 @@ export class ComponentFixer {
             const usePure = this._options.pureComponentImport != null && this._options.pureComponentImport != null;
             importName = usePure ? this._options.pureComponentImport! : this._options.componentImport;
             importModule = usePure ? this._options.pureComponentModule! : this._options.componentModule;
-            canUseScu = !usePure;
+            canUseAreEqual = !usePure;
         } else {
             importName = this._options.componentImport;
             importModule = this._options.componentModule;
@@ -261,20 +265,20 @@ export class ComponentFixer {
             return null;
         }
 
-        let scuInfo: ReturnType<ComponentFixer["getImportAndFixit"]> | null = null;
-        if (canUseScu) {
-            scuInfo = this.getImportAndFixit(
+        let areEqualInfo: ReturnType<ComponentFixer["getImportAndFixit"]> | null = null;
+        if (canUseAreEqual) {
+            areEqualInfo = this.getImportAndFixit(
                 fixer,
                 root,
-                this._options.shouldUpdateImport,
-                this._options.shouldUpdateModule
+                this._options.areEqualImport,
+                this._options.areEqualModule
             );
         }
         return {
             componentInfo,
-            scuInfo,
+            areEqualInfo,
             classForm,
-            canUseScu,
+            canUseAreEqual,
         };
     }
 
@@ -334,7 +338,11 @@ export class ComponentFixer {
         const sourceCode = this._context.getSourceCode();
 
         // Is this a render only component, or does this component have a display name?
-        if (componentCall.arguments.length === 1 || componentCall.arguments[0].type === "ObjectExpression") {
+        if (
+            componentCall.arguments.length === 1 ||
+            componentCall.arguments[0].type === "ObjectExpression" ||
+            componentCall.arguments[0].type === "ArrayExpression"
+        ) {
             const parent = (componentCall as any)["parent"] as EsNode;
             const className =
                 parent.type === "VariableDeclarator" ? (parent.id as Identifier).name : "AnonymousComponent";
@@ -344,7 +352,7 @@ export class ComponentFixer {
             };
         } else {
             // We have a display name
-            const displayName = this.stripQuotes(sourceCode.getText(componentCall.arguments[0]));
+            const displayName = sourceCode.getText(componentCall.arguments[0]);
             const parent = (componentCall as any)["parent"] as EsNode;
             const className =
                 parent.type === "VariableDeclarator" ? (parent.id as Identifier).name : "AnonymousComponent";
@@ -513,13 +521,6 @@ export class ComponentFixer {
         }
 
         return fixer.replaceText(parent, formattedBody);
-    }
-
-    private stripQuotes(line: string): string {
-        if (line.startsWith(`'`) || line.startsWith(`"`) || line.startsWith("`")) {
-            return line.replace(/^[\'\"\`]/gm, "").replace(/[\'\"\`]$/gm, "");
-        }
-        return line;
     }
 
     private smartQuote(text: string): string {

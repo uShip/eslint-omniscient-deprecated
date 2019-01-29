@@ -1,0 +1,43 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`hoc components should handle wrapped components 1`] = `
+Object {
+  "fixed": true,
+  "messages": Array [
+    Object {
+      "column": 28,
+      "fatal": true,
+      "line": 21,
+      "message": "Parsing error: Unexpected token =",
+      "ruleId": null,
+      "severity": 2,
+    },
+  ],
+  "output": "import { Component } from 'react';
+import { immutShouldComponentUpdate } from 'TestModule';
+
+import component from 'omniscient';
+
+function withProps(BaseComponent, props) {
+    return (() => {
+    class AnonymousComponent extends Component {
+        shouldComponentUpdate(nextProps, nextState) {
+            return (
+                !immutShouldComponentUpdate(this.props, nextProps) ||
+                !immutShouldComponentUpdate(this.state, nextState)
+            );
+        }
+
+        render() {
+            const newProps = this.props;
+            return <Component {...newProps} {...props} />;
+        }
+
+        static displayName = BaseComponent.displayName + \\"_WithProps\\";
+    }
+
+    return AnonymousComponent;
+})();
+}",
+}
+`;

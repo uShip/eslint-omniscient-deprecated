@@ -1,4 +1,4 @@
-import { fix } from "./setup";
+import { fix } from "./__setup__/setup";
 
 describe("no fix required", () => {
     it("non usage should require no fix", () => {

@@ -1,7 +1,7 @@
-import rule, { OmniscientComponentRuleOptions } from "../../../../lib/rules/omniscient-component";
+import rule, { OmniscientComponentRuleOptions } from "../../../omniscient-component";
 import { Linter } from "eslint";
 import jestDiff from "jest-diff";
-import eslintConfig from "../eslintRuleConfig";
+import eslintConfig from "../../__setup__/eslintRuleConfig";
 
 const linter = new Linter();
 linter.defineRule("omniscient-component", rule);
@@ -9,10 +9,11 @@ linter.defineRule("omniscient-component", rule);
 export const ruleName = "omniscient-component";
 export const omniscientComponentConfig = [
     "error",
+    // eslint-disable-next-line @typescript-eslint/no-object-literal-type-assertion
     {
-        shouldUpdateModule: "TestModule",
-        shouldUpdateImport: "immutShouldComponentUpdate",
-    },
+        areEqualModule: "TestModule",
+        areEqualImport: "immutShouldComponentUpdate",
+    } as Partial<OmniscientComponentRuleOptions>,
 ] as ["error", object];
 
 const omniscientConfig = {

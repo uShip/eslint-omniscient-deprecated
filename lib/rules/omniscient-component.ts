@@ -44,18 +44,19 @@ export interface OmniscientComponentRuleOptions {
      */
     memoImport: string | null;
     /**
-     * The module in which resides a shouldComponentUpdate function
-     * that can handle Immutable.js state and prop properties.
+     * The module in which resides a areEqual function
+     * that can handle Immutable.js comparisions.
      */
-    shouldUpdateModule: string;
+    areEqualModule: string;
     /**
-     * The name of the imported shouldComponentUpdate function that
-     * can handle Immutable.js state and prop properties.
+     * The name of the imported areEqual function that
+     * can handle Immutable.js comparisions.
      * Used by memoImport when an omniscient component has no mixins,
      * and componentImport if one does and no pureComponentImport was
-     * provided.
+     * provided. Is passed the previous and next props and additionally
+     * the previous and next state, if applicable.
      */
-    shouldUpdateImport: string;
+    areEqualImport: string;
     /**
      * Whether or not fix render `this` issues by using class properties
      * or by attempting to apply a `.bind(this)` hueristic.
@@ -86,8 +87,8 @@ const omniscientComponentRule: Rule.RuleModule = {
                     pureComponentImport: { type: "string" },
                     memoModule: { type: "string" },
                     memoImport: { type: "string" },
-                    shouldUpdateModule: { type: "string" },
-                    shouldUpdateImport: { type: "string" },
+                    areEqualModule: { type: "string" },
+                    areEqualImport: { type: "string" },
                     useClassProperties: { type: "boolean" },
                 },
                 required: ["shouldUpdateModule", "shouldUpdateImport"],
@@ -103,17 +104,13 @@ const omniscientComponentRule: Rule.RuleModule = {
             pureComponentImport: null,
             memoModule: null,
             memoImport: null,
-            shouldUpdateModule: null as any,
-            shouldUpdateImport: null as any,
+            areEqualModule: null as any,
+            areEqualImport: null as any,
             useClassProperties: true,
         };
 
         if (context.options[0]) {
             options = { ...options, ...context.options[0] };
-        }
-
-        if (options.shouldUpdateImport == null) {
-            throw Error("You must provide a shouldUpdateModule and shouldUpdateImport");
         }
 
         const componentFixer = new ComponentFixer(context, options);

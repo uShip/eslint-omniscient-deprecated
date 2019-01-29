@@ -1,0 +1,118 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`import types should handle already present custom import types 1`] = `
+Object {
+  "fixed": true,
+  "messages": Array [],
+  "output": "import { immutShouldComponentUpdate } from 'TestModule';
+import MyLib from 'MyLib';
+import component from 'omniscient';
+
+class TestComponent extends MyLib.MyComponent {
+    shouldComponentUpdate(nextProps, nextState) {
+        return (
+            !immutShouldComponentUpdate(this.props, nextProps) ||
+            !immutShouldComponentUpdate(this.state, nextState)
+        );
+    }
+
+    render() {
+        return <h1>Test</h1>;
+    }
+}",
+}
+`;
+
+exports[`import types should handle custom import types 1`] = `
+Object {
+  "fixed": true,
+  "messages": Array [],
+  "output": "import { MyComponent } from 'MyLib';
+import { immutShouldComponentUpdate } from 'TestModule';
+
+import component from 'omniscient';
+
+class TestComponent extends MyComponent {
+    shouldComponentUpdate(nextProps, nextState) {
+        return (
+            !immutShouldComponentUpdate(this.props, nextProps) ||
+            !immutShouldComponentUpdate(this.state, nextState)
+        );
+    }
+
+    render() {
+        return <h1>Test</h1>;
+    }
+}",
+}
+`;
+
+exports[`import types should handle default import types 1`] = `
+Object {
+  "fixed": true,
+  "messages": Array [],
+  "output": "import { Component } from 'react';
+import { immutShouldComponentUpdate } from 'TestModule';
+
+import component from 'omniscient';
+
+class TestComponent extends Component {
+    shouldComponentUpdate(nextProps, nextState) {
+        return (
+            !immutShouldComponentUpdate(this.props, nextProps) ||
+            !immutShouldComponentUpdate(this.state, nextState)
+        );
+    }
+
+    render() {
+        return <h1>Test</h1>;
+    }
+}",
+}
+`;
+
+exports[`import types should handle existing default import 1`] = `
+Object {
+  "fixed": true,
+  "messages": Array [],
+  "output": "import { immutShouldComponentUpdate } from 'TestModule';
+import React from 'react';
+import component from 'omniscient';
+
+class TestComponent extends React.Component {
+    shouldComponentUpdate(nextProps, nextState) {
+        return (
+            !immutShouldComponentUpdate(this.props, nextProps) ||
+            !immutShouldComponentUpdate(this.state, nextState)
+        );
+    }
+
+    render() {
+        return <h1>Test</h1>;
+    }
+}",
+}
+`;
+
+exports[`import types should handle existing named import 1`] = `
+Object {
+  "fixed": true,
+  "messages": Array [],
+  "output": "import { immutShouldComponentUpdate } from 'TestModule';
+import { Component } from 'react';
+import component from 'omniscient';
+
+class TestComponent extends Component {
+    shouldComponentUpdate(nextProps, nextState) {
+        return (
+            !immutShouldComponentUpdate(this.props, nextProps) ||
+            !immutShouldComponentUpdate(this.state, nextState)
+        );
+    }
+
+    render() {
+        return <h1>Test</h1>;
+    }
+}",
+}
+`;
