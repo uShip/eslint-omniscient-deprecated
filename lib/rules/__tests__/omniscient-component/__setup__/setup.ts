@@ -11,8 +11,8 @@ export const omniscientComponentConfig = [
     "error",
     // eslint-disable-next-line @typescript-eslint/no-object-literal-type-assertion
     {
-        areEqualModule: "TestModule",
-        areEqualImport: "immutShouldComponentUpdate",
+        areEqualModule: "ImmutableComponent",
+        areEqualImport: "isEqualImmutable",
     } as Partial<OmniscientComponentRuleOptions>,
 ] as ["error", object];
 

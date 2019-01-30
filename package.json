@@ -50,7 +50,7 @@
         "eslint": "~5.9.0"
     },
     "dependencies": {
-        "prettier": "^1.15.3"
+        "prettier": "^1.16.1"
     },
     "husky": {
         "hooks": {

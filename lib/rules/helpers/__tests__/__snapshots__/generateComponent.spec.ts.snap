@@ -10,7 +10,7 @@ this.state = {a : 1};
 getA = () => { return <h1>Test</h1>; };
 
 shouldComponentUpdate(nextProps, nextState) {
-    return !is(this.props, nextProps) || !is(this.state, nextState);
+    return !(is(this.props, nextProps) && ((!oldState && !newState) || is(this.state, nextState)));
 }
 
 render() { return this.getA(); }
@@ -30,7 +30,7 @@ this.state = {a : 1};
 getA() { return <h1>Test</h1>; };
 
 shouldComponentUpdate(nextProps, nextState) {
-    return !is(this.props, nextProps) || !is(this.state, nextState);
+    return !(is(this.props, nextProps) && ((!oldState && !newState) || is(this.state, nextState)));
 }
 
 render() { return this.getA().bind(this); }
@@ -53,7 +53,7 @@ exports[`generateComponent should generate wrapped class component 1`] = `
 "(() => {
 class Test extends Component {
 shouldComponentUpdate(nextProps, nextState) {
-    return !is(this.props, nextProps) || !is(this.state, nextState);
+    return !(is(this.props, nextProps) && ((!oldState && !newState) || is(this.state, nextState)));
 }
 
 render() { return null; }

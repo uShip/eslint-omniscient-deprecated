@@ -1,4 +1,4 @@
-import { fix } from "./__setup__/setup";
+import { fix, withRuleOptions } from "./__setup__/setup";
 
 describe("simple component conversions", () => {
     it("should convert render only component", () => {
@@ -21,6 +21,24 @@ const TestComponent = component("TestComponent", () => {
     return (<h1>Test</h1>);
 })`;
         const output = fix(input);
+        expect(output).toBeFixed();
+        expect(output).toMatchSnapshot();
+    });
+
+    it("should convert simple pure component to function when has memo", () => {
+        const input = `
+import component from 'omniscient';
+
+const TestComponent = component("TestComponent", () => {
+    return (<h1>Test</h1>);
+})`;
+        const output = fix(
+            input,
+            withRuleOptions({
+                memoImport: "memo",
+                memoModule: "react",
+            })
+        );
         expect(output).toBeFixed();
         expect(output).toMatchSnapshot();
     });

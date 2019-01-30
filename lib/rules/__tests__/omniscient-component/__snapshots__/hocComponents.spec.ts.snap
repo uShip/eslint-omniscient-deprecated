@@ -3,28 +3,20 @@
 exports[`hoc components should handle wrapped components 1`] = `
 Object {
   "fixed": true,
-  "messages": Array [
-    Object {
-      "column": 28,
-      "fatal": true,
-      "line": 21,
-      "message": "Parsing error: Unexpected token =",
-      "ruleId": null,
-      "severity": 2,
-    },
-  ],
-  "output": "import { Component } from 'react';
-import { immutShouldComponentUpdate } from 'TestModule';
+  "messages": Array [],
+  "output": "import { Component as Component0 } from 'react';
+import { isEqualImmutable } from 'ImmutableComponent';
 
 import component from 'omniscient';
 
-function withProps(BaseComponent, props) {
+function withProps(Component, props) {
     return (() => {
-    class AnonymousComponent extends Component {
+    class AnonymousComponent extends Component0 {
         shouldComponentUpdate(nextProps, nextState) {
-            return (
-                !immutShouldComponentUpdate(this.props, nextProps) ||
-                !immutShouldComponentUpdate(this.state, nextState)
+            return !(
+                isEqualImmutable(this.props, nextProps) &&
+                ((!oldState && !newState) ||
+                    isEqualImmutable(this.state, nextState))
             );
         }
 
@@ -33,7 +25,7 @@ function withProps(BaseComponent, props) {
             return <Component {...newProps} {...props} />;
         }
 
-        static displayName = BaseComponent.displayName + \\"_WithProps\\";
+        static displayName = Component.displayName + \\"_WithProps\\";
     }
 
     return AnonymousComponent;

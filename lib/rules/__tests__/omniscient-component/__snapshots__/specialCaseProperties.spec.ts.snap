@@ -3,18 +3,9 @@
 exports[`special cased properties defaultProps should handle default props method 1`] = `
 Object {
   "fixed": true,
-  "messages": Array [
-    Object {
-      "column": 24,
-      "fatal": true,
-      "line": 25,
-      "message": "Parsing error: Unexpected token =",
-      "ruleId": null,
-      "severity": 2,
-    },
-  ],
+  "messages": Array [],
   "output": "import { Component } from 'react';
-import { immutShouldComponentUpdate } from 'TestModule';
+import { isEqualImmutable } from 'ImmutableComponent';
 
 import component from 'omniscient';
 import { getDefaultPropsFor } from 'test';
@@ -26,9 +17,10 @@ class TestComponent extends Component {
     }
 
     shouldComponentUpdate(nextProps, nextState) {
-        return (
-            !immutShouldComponentUpdate(this.props, nextProps) ||
-            !immutShouldComponentUpdate(this.state, nextState)
+        return !(
+            isEqualImmutable(this.props, nextProps) &&
+            ((!oldState && !newState) ||
+                isEqualImmutable(this.state, nextState))
         );
     }
 
@@ -45,18 +37,9 @@ class TestComponent extends Component {
 exports[`special cased properties defaultProps should handle default props object 1`] = `
 Object {
   "fixed": true,
-  "messages": Array [
-    Object {
-      "column": 25,
-      "fatal": true,
-      "line": 7,
-      "message": "Parsing error: Unexpected token =",
-      "ruleId": null,
-      "severity": 2,
-    },
-  ],
+  "messages": Array [],
   "output": "import { Component } from 'react';
-import { immutShouldComponentUpdate } from 'TestModule';
+import { isEqualImmutable } from 'ImmutableComponent';
 
 import component from 'omniscient';
 
@@ -64,9 +47,10 @@ class TestComponent extends Component {
     static defaultProps = { label: \\"test\\" };
 
     shouldComponentUpdate(nextProps, nextState) {
-        return (
-            !immutShouldComponentUpdate(this.props, nextProps) ||
-            !immutShouldComponentUpdate(this.state, nextState)
+        return !(
+            isEqualImmutable(this.props, nextProps) &&
+            ((!oldState && !newState) ||
+                isEqualImmutable(this.state, nextState))
         );
     }
 
@@ -83,18 +67,9 @@ class TestComponent extends Component {
 exports[`special cased properties should handle initial state 1`] = `
 Object {
   "fixed": true,
-  "messages": Array [
-    Object {
-      "column": 24,
-      "fatal": true,
-      "line": 24,
-      "message": "Parsing error: Unexpected token =",
-      "ruleId": null,
-      "severity": 2,
-    },
-  ],
+  "messages": Array [],
   "output": "import { Component } from 'react';
-import { immutShouldComponentUpdate } from 'TestModule';
+import { isEqualImmutable } from 'ImmutableComponent';
 
 import component from 'omniscient';
 
@@ -105,9 +80,10 @@ class TestComponent extends Component {
     }
 
     shouldComponentUpdate(nextProps, nextState) {
-        return (
-            !immutShouldComponentUpdate(this.props, nextProps) ||
-            !immutShouldComponentUpdate(this.state, nextState)
+        return !(
+            isEqualImmutable(this.props, nextProps) &&
+            ((!oldState && !newState) ||
+                isEqualImmutable(this.state, nextState))
         );
     }
 
@@ -124,18 +100,9 @@ class TestComponent extends Component {
 exports[`special cased properties should handle propTypes 1`] = `
 Object {
   "fixed": true,
-  "messages": Array [
-    Object {
-      "column": 22,
-      "fatal": true,
-      "line": 7,
-      "message": "Parsing error: Unexpected token =",
-      "ruleId": null,
-      "severity": 2,
-    },
-  ],
+  "messages": Array [],
   "output": "import { Component } from 'react';
-import { immutShouldComponentUpdate } from 'TestModule';
+import { isEqualImmutable } from 'ImmutableComponent';
 
 import component from 'omniscient';
 
@@ -145,9 +112,10 @@ class TestComponent extends Component {
     };
 
     shouldComponentUpdate(nextProps, nextState) {
-        return (
-            !immutShouldComponentUpdate(this.props, nextProps) ||
-            !immutShouldComponentUpdate(this.state, nextState)
+        return !(
+            isEqualImmutable(this.props, nextProps) &&
+            ((!oldState && !newState) ||
+                isEqualImmutable(this.state, nextState))
         );
     }
 

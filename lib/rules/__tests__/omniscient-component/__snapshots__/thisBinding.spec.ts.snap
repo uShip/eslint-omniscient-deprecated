@@ -3,18 +3,9 @@
 exports[`this binding should handle this in render func 1`] = `
 Object {
   "fixed": true,
-  "messages": Array [
-    Object {
-      "column": 15,
-      "fatal": true,
-      "line": 12,
-      "message": "Parsing error: Unexpected token =",
-      "ruleId": null,
-      "severity": 2,
-    },
-  ],
+  "messages": Array [],
   "output": "import { Component } from 'react';
-import { immutShouldComponentUpdate } from 'TestModule';
+import { isEqualImmutable } from 'ImmutableComponent';
 
 import component from 'omniscient';
 
@@ -37,9 +28,10 @@ class TestComponent extends Component {
     };
 
     shouldComponentUpdate(nextProps, nextState) {
-        return (
-            !immutShouldComponentUpdate(this.props, nextProps) ||
-            !immutShouldComponentUpdate(this.state, nextState)
+        return !(
+            isEqualImmutable(this.props, nextProps) &&
+            ((!oldState && !newState) ||
+                isEqualImmutable(this.state, nextState))
         );
     }
 
@@ -62,7 +54,7 @@ Object {
   "fixed": true,
   "messages": Array [],
   "output": "import { Component } from 'react';
-import { immutShouldComponentUpdate } from 'TestModule';
+import { isEqualImmutable } from 'ImmutableComponent';
 
 import component from 'omniscient';
 
@@ -85,9 +77,10 @@ class TestComponent extends Component {
     }
 
     shouldComponentUpdate(nextProps, nextState) {
-        return (
-            !immutShouldComponentUpdate(this.props, nextProps) ||
-            !immutShouldComponentUpdate(this.state, nextState)
+        return !(
+            isEqualImmutable(this.props, nextProps) &&
+            ((!oldState && !newState) ||
+                isEqualImmutable(this.state, nextState))
         );
     }
 

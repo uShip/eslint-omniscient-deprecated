@@ -1,4 +1,4 @@
-import { Rule, SourceCode } from "eslint";
+import { Rule, SourceCode, Scope } from "eslint";
 import {
     Program,
     ImportDeclaration,
@@ -300,11 +300,33 @@ export class ComponentFixer {
             baseImportDeclaration = child;
         }
 
-        // TODO: Take into account scope conflict aka HOC which take a Component param
+        const { variables } = this._context.getScope();
+
+        // Ensure that the import name does conflict with any other variable names.
+        let i = 0;
+        const baseName = importName;
+        let mapped = false;
+        function isNonImportMatch(variable: Scope.Variable): boolean {
+            if (variable.name !== importName) {
+                return false;
+            }
+
+            return !variable.defs.every(
+                scope => scope.type === "ImportBinding" && scope.parent.source.value === importModule
+            );
+        }
+
+        while (variables.find(isNonImportMatch)) {
+            importName = `${baseName}${i++}`;
+            mapped = true;
+        }
+
+        const importSpecifier = `${mapped ? `${baseName} as ${importName}` : importName}`;
+
         if (!baseImportDeclaration) {
             const fix: Rule.Fix = {
                 range: [0, 0],
-                text: `import { ${importName} } from '${importModule}';\n`,
+                text: `import { ${importSpecifier} } from '${importModule}';\n`,
             };
             return { fixit: fix, importName };
         }
@@ -325,7 +347,7 @@ export class ComponentFixer {
 
         if (lastImportSpecifier) {
             return {
-                fixit: fixer.insertTextAfterRange(lastImportSpecifier, `, ${importName}`),
+                fixit: fixer.insertTextAfterRange(lastImportSpecifier, `, ${importSpecifier}`),
                 importName,
             };
         } else if (defaultImport) {
@@ -511,7 +533,7 @@ export class ComponentFixer {
 
         let formattedBody = prettier
             .format(newBody, {
-                parser: "babylon",
+                parser: "babel" as "babylon",
                 tabWidth: 4,
             })
             .trim();

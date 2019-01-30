@@ -3,26 +3,18 @@
 exports[`simple component conversions should convert component with destructed props 1`] = `
 Object {
   "fixed": true,
-  "messages": Array [
-    Object {
-      "column": 24,
-      "fatal": true,
-      "line": 19,
-      "message": "Parsing error: Unexpected token =",
-      "ruleId": null,
-      "severity": 2,
-    },
-  ],
+  "messages": Array [],
   "output": "import { Component } from 'react';
-import { immutShouldComponentUpdate } from 'TestModule';
+import { isEqualImmutable } from 'ImmutableComponent';
 
 import component from 'omniscient';
 
 class TestComponent extends Component {
     shouldComponentUpdate(nextProps, nextState) {
-        return (
-            !immutShouldComponentUpdate(this.props, nextProps) ||
-            !immutShouldComponentUpdate(this.state, nextState)
+        return !(
+            isEqualImmutable(this.props, nextProps) &&
+            ((!oldState && !newState) ||
+                isEqualImmutable(this.state, nextState))
         );
     }
 
@@ -39,26 +31,18 @@ class TestComponent extends Component {
 exports[`simple component conversions should convert component with raw props 1`] = `
 Object {
   "fixed": true,
-  "messages": Array [
-    Object {
-      "column": 24,
-      "fatal": true,
-      "line": 19,
-      "message": "Parsing error: Unexpected token =",
-      "ruleId": null,
-      "severity": 2,
-    },
-  ],
+  "messages": Array [],
   "output": "import { Component } from 'react';
-import { immutShouldComponentUpdate } from 'TestModule';
+import { isEqualImmutable } from 'ImmutableComponent';
 
 import component from 'omniscient';
 
 class TestComponent extends Component {
     shouldComponentUpdate(nextProps, nextState) {
-        return (
-            !immutShouldComponentUpdate(this.props, nextProps) ||
-            !immutShouldComponentUpdate(this.state, nextState)
+        return !(
+            isEqualImmutable(this.props, nextProps) &&
+            ((!oldState && !newState) ||
+                isEqualImmutable(this.state, nextState))
         );
     }
 
@@ -77,15 +61,16 @@ Object {
   "fixed": true,
   "messages": Array [],
   "output": "import { Component } from 'react';
-import { immutShouldComponentUpdate } from 'TestModule';
+import { isEqualImmutable } from 'ImmutableComponent';
 
 import component from 'omniscient';
 
 class TestComponent extends Component {
     shouldComponentUpdate(nextProps, nextState) {
-        return (
-            !immutShouldComponentUpdate(this.props, nextProps) ||
-            !immutShouldComponentUpdate(this.state, nextState)
+        return !(
+            isEqualImmutable(this.props, nextProps) &&
+            ((!oldState && !newState) ||
+                isEqualImmutable(this.state, nextState))
         );
     }
 
@@ -99,26 +84,45 @@ class TestComponent extends Component {
 exports[`simple component conversions should convert simple pure component 1`] = `
 Object {
   "fixed": true,
-  "messages": Array [
-    Object {
-      "column": 24,
-      "fatal": true,
-      "line": 18,
-      "message": "Parsing error: Unexpected token =",
-      "ruleId": null,
-      "severity": 2,
-    },
-  ],
+  "messages": Array [],
   "output": "import { Component } from 'react';
-import { immutShouldComponentUpdate } from 'TestModule';
+import { isEqualImmutable } from 'ImmutableComponent';
 
 import component from 'omniscient';
 
 class TestComponent extends Component {
     shouldComponentUpdate(nextProps, nextState) {
-        return (
-            !immutShouldComponentUpdate(this.props, nextProps) ||
-            !immutShouldComponentUpdate(this.state, nextState)
+        return !(
+            isEqualImmutable(this.props, nextProps) &&
+            ((!oldState && !newState) ||
+                isEqualImmutable(this.state, nextState))
+        );
+    }
+
+    render() {
+        return <h1>Test</h1>;
+    }
+
+    static displayName = \\"TestComponent\\";
+}",
+}
+`;
+
+exports[`simple component conversions should convert simple pure component to function when has memo 1`] = `
+Object {
+  "fixed": true,
+  "messages": Array [],
+  "output": "import { Component } from 'react';
+import { isEqualImmutable } from 'ImmutableComponent';
+
+import component from 'omniscient';
+
+class TestComponent extends Component {
+    shouldComponentUpdate(nextProps, nextState) {
+        return !(
+            isEqualImmutable(this.props, nextProps) &&
+            ((!oldState && !newState) ||
+                isEqualImmutable(this.state, nextState))
         );
     }
 
@@ -136,7 +140,7 @@ Object {
   "fixed": true,
   "messages": Array [],
   "output": "import { Component } from 'react';
-import { immutShouldComponentUpdate } from 'TestModule';
+import { isEqualImmutable } from 'ImmutableComponent';
 
 import component from 'omniscient';
 
@@ -147,9 +151,10 @@ class TestComponent extends Component {
     }
 
     shouldComponentUpdate(nextProps, nextState) {
-        return (
-            !immutShouldComponentUpdate(this.props, nextProps) ||
-            !immutShouldComponentUpdate(this.state, nextState)
+        return !(
+            isEqualImmutable(this.props, nextProps) &&
+            ((!oldState && !newState) ||
+                isEqualImmutable(this.state, nextState))
         );
     }
 

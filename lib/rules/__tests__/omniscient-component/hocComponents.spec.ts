@@ -5,8 +5,8 @@ describe("hoc components", () => {
         const input = `
 import component from 'omniscient';
 
-function withProps(BaseComponent, props) {
-    return component(BaseComponent.displayName + '_WithProps', newProps => {
+function withProps(Component, props) {
+    return component(Component.displayName + '_WithProps', newProps => {
         return <Component {...newProps} {...props} />;
     });
 }`;

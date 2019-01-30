@@ -36,7 +36,7 @@ function generateClassComponent(classInfo: ClassInformation, canUseClassProperti
         const shouldUpdateBody: string[] = [];
         shouldUpdateBody.push(`shouldComponentUpdate(nextProps, nextState) {`);
         shouldUpdateBody.push(
-            `    return !${areEqualFunction}(this.props, nextProps) || !${areEqualFunction}(this.state, nextState);`
+            `    return !(${areEqualFunction}(this.props, nextProps) && ((!oldState && !newState) || ${areEqualFunction}(this.state, nextState)));`
         );
         shouldUpdateBody.push(`}`);
         instanceProperties.unshift(shouldUpdateBody.join("\n"));
