@@ -44,6 +44,10 @@ export interface OmniscientComponentRuleOptions {
      */
     memoImport: string | null;
     /**
+     * Whether or not the memoImport takes areEqualImport as it's second parameter.
+     */
+    passAreEqualToMemo: boolean;
+    /**
      * The module in which resides a areEqual function
      * that can handle Immutable.js comparisions.
      */
@@ -106,6 +110,7 @@ const omniscientComponentRule: Rule.RuleModule = {
             memoImport: null,
             areEqualModule: null as any,
             areEqualImport: null as any,
+            passAreEqualToMemo: true,
             useClassProperties: true,
         };
 
@@ -115,12 +120,17 @@ const omniscientComponentRule: Rule.RuleModule = {
 
         const componentFixer = new ComponentFixer(context, options);
 
+        const omniscientImport = componentFixer.getOmniscientImportName();
+
+        if (omniscientImport == null) {
+            return {};
+        }
+
         //----------------------------------------------------------------------
         // Public
         //----------------------------------------------------------------------
-
         return {
-            CallExpression: function(node) {
+            [`CallExpression[callee.name='${omniscientImport}']`]: function(node: CallExpression) {
                 const calli = node as CallExpression;
                 if (!componentFixer.isError(calli)) {
                     return;

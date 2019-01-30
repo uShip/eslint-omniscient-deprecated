@@ -37,6 +37,7 @@ const TestComponent = component("TestComponent", () => {
             withRuleOptions({
                 memoImport: "memo",
                 memoModule: "react",
+                passAreEqualToMemo: false,
             })
         );
         expect(output).toBeFixed();
@@ -50,7 +51,7 @@ import component from 'omniscient';
 const TestComponent = component("TestComponent", (props) => {
 return (<h1>{props.name}</h1>);
 })`;
-        const output = fix(input);
+        const output = fix(input, withRuleOptions({ passAreEqualToMemo: false }));
         expect(output).toBeFixed();
         expect(output).toMatchSnapshot();
     });

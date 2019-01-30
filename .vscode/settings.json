@@ -1,16 +1,19 @@
 {
-    "editor.formatOnSave": true,
-    "eslint.validate": ["javascript", "javascriptreact", "typescript", "typescriptreact"],
-    "files.exclude": {
-        "**/.git": true,
-        "**/.svn": true,
-        "**/.hg": true,
-        "**/CVS": true,
-        "**/.DS_Store": true,
-        ".npmignore": true,
-        ".editorconfig": true,
-        ".prettierrc": true,
-        ".gitignore": true,
-        ".eslintrc.js": true
-    }
+  "editor.formatOnSave": true,
+  "eslint.validate": ["javascript", "javascriptreact", "typescript", "typescriptreact"],
+  "files.exclude": {
+    "**/.git": true,
+    "**/.svn": true,
+    "**/.hg": true,
+    "**/CVS": true,
+    "**/.DS_Store": true,
+    ".npmignore": true,
+    ".editorconfig": true,
+    ".prettierrc": true,
+    ".gitignore": true,
+    ".eslintrc.js": false
+  },
+  "[javascript]": {
+    "editor.formatOnSave": false
+  }
 }

@@ -177,7 +177,8 @@ export class ComponentFixer {
                     wrapped: anonymousClass,
                     staticProperties: staticProps,
                     renderBody,
-                    areEqualFunction: canUseAreEqual ? areEqualInfo!.importName : null,
+                    areEqualFunction:
+                        canUseAreEqual && this._options.passAreEqualToMemo ? areEqualInfo!.importName : null,
                     props: "", // TODO
                 },
                 this._options.memoImport
@@ -197,8 +198,11 @@ export class ComponentFixer {
     }
 
     private getOmniscientImport(): ImportDeclaration | undefined | null {
-        const nodeVariables = this._context.getAncestors();
-        const scriptContext = nodeVariables[0];
+        let topLevel: Scope.Scope = this._context.getScope();
+        while (topLevel.upper) {
+            topLevel = topLevel.upper;
+        }
+        const scriptContext = topLevel.block;
         const imports: ImportDeclaration[] = (scriptContext as Program).body.filter(
             node => node.type === "ImportDeclaration"
         ) as ImportDeclaration[];
@@ -211,7 +215,7 @@ export class ComponentFixer {
         });
     }
 
-    private getOmniscientImportName(): string | null {
+    public getOmniscientImportName(): string | null {
         const omniscient = this.getOmniscientImport();
 
         if (!omniscient) {
@@ -519,8 +523,13 @@ export class ComponentFixer {
 }`.trim();
     }
 
+    /**
+     * Attempts to make a guess as to wether or not a component declaration is stateless.
+     * @param calli The source call expression
+     */
     private isLikelyMemoizable(calli: CallExpression): boolean {
-        return false;
+        const sourceCode = this._context.getSourceCode();
+        return !sourceCode.getText(calli).includes("this.state");
     }
 
     private formatAndReplace(callExpression: CallExpression, fixer: Rule.RuleFixer, newBody: string): Rule.Fix {

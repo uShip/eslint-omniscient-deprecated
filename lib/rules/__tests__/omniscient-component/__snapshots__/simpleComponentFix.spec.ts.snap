@@ -112,26 +112,15 @@ exports[`simple component conversions should convert simple pure component to fu
 Object {
   "fixed": true,
   "messages": Array [],
-  "output": "import { Component } from 'react';
+  "output": "import { memo } from 'react';
 import { isEqualImmutable } from 'ImmutableComponent';
 
 import component from 'omniscient';
 
-class TestComponent extends Component {
-    shouldComponentUpdate(nextProps, nextState) {
-        return !(
-            isEqualImmutable(this.props, nextProps) &&
-            ((!oldState && !newState) ||
-                isEqualImmutable(this.state, nextState))
-        );
-    }
-
-    render() {
-        return <h1>Test</h1>;
-    }
-
-    static displayName = \\"TestComponent\\";
-}",
+const TestComponent = memo(function TestComponent() {
+    return <h1>Test</h1>;
+});
+TestComponent.displayName = \\"TestComponent\\";",
 }
 `;
 
