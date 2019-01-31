@@ -14,7 +14,7 @@ import {
 } from "estree";
 import prettier from "prettier";
 import { OmniscientComponentRuleOptions } from "../omniscient-component";
-import { generateClassComponent, generateFunctionComponent } from "./generateComponent";
+import { generateClassComponent, generateFunctionComponent, PropertyInformation } from "./generateComponent";
 
 type ComponentFixerOptions = OmniscientComponentRuleOptions;
 
@@ -437,7 +437,7 @@ export class ComponentFixer {
                     { isStatic: true, lines: this.propertyBodyToSource(property, `static ${name}`, sourceCode) },
                 ];
             } else if (body.body.body[0].type !== "ReturnStatement") {
-                return [{ isStatic: true, getter: true, lines: `defaultProps${sourceCode.getText(body)}` }];
+                return [{ isStatic: true, getter: true, lines: `${sourceCode.getText(body)}` }];
             }
             return [
                 {
