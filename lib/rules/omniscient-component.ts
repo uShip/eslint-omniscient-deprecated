@@ -1,6 +1,6 @@
 import { Rule } from "eslint";
 import { ComponentFixer } from "./helpers/ComponentFixer";
-import { CallExpression } from "estree";
+import { CallExpression, Node as EsNode, VariableDeclarator, MemberExpression } from "estree";
 
 /**
  * @fileoverview Usage of omniscient component
@@ -118,19 +118,113 @@ const omniscientComponentRule: Rule.RuleModule = {
             options = { ...options, ...context.options[0] };
         }
 
-        const componentFixer = new ComponentFixer(context, options);
-
-        const omniscientImport = componentFixer.getOmniscientImportName();
+        const omniscientImport = ComponentFixer.getOmniscientImportName(context);
 
         if (omniscientImport == null) {
             return {};
         }
 
+        let componentFixer: ComponentFixer | null = null;
+
         //----------------------------------------------------------------------
         // Public
         //----------------------------------------------------------------------
         return {
-            [`CallExpression[callee.name='${omniscientImport}']`]: function(node: CallExpression) {
+            [`CallExpression[callee.name='${omniscientImport}']`]: function(node: EsNode) {
+                componentFixer = new ComponentFixer(context, options, node as CallExpression);
+                return;
+            },
+            // Check if we're using children prop in render body. Since ESLint doesn't expose visitors (sad),
+            // we have to piggy back on create as a dum visitor
+            VariableDeclarator: function(node: EsNode) {
+                const variableDeclaration = node as VariableDeclarator;
+
+                // If we're not in a call context, or we've already determined this call uses children,
+                // exit.
+                if (!componentFixer || componentFixer.usesChildrenInBody) {
+                    return;
+                }
+
+                if (variableDeclaration.init == null || variableDeclaration.id.type !== "ObjectPattern") {
+                    return;
+                }
+
+                // Check if we're destructing the props. If so, short curcuit
+                const renderFunction = componentFixer.renderFunction;
+                const renderProps = ComponentFixer.getRenderProps(renderFunction);
+                if (!renderProps.hasProps || renderProps.isObjectPattern) {
+                    return;
+                }
+
+                if (
+                    variableDeclaration.init.type !== "Identifier" ||
+                    renderProps.props !== variableDeclaration.init.name
+                ) {
+                    return;
+                }
+
+                // Check if our ancestor is the render func
+                const ancestors = context.getAncestors();
+                if (!ancestors.some(anc => anc == renderFunction)) {
+                    return;
+                }
+
+                const variables = context.getDeclaredVariables(node);
+                componentFixer.usesChildrenInBody = variables.some(v => v.identifiers.some(i => i.name === "children"));
+            },
+            MemberExpression: function(node: EsNode) {
+                const memberExpression = node as MemberExpression;
+
+                // If we're not in a call context, or we've already determined this call uses children,
+                // exit.
+                if (!componentFixer || componentFixer.usesChildrenInBody) {
+                    return;
+                }
+
+                // Check if we're destructing the props. If so, short curcuit
+                const renderFunction = componentFixer.renderFunction;
+                const renderProps = ComponentFixer.getRenderProps(renderFunction);
+                if (!renderProps.hasProps || renderProps.isObjectPattern) {
+                    return;
+                }
+
+                // Check if our ancestor is the render func
+                const ancestors = context.getAncestors();
+                if (!ancestors.some(anc => anc == renderFunction)) {
+                    return;
+                }
+
+                if (memberExpression.object.type !== "Identifier") {
+                    return;
+                }
+
+                // Check if we're accessing the render props
+                if (memberExpression.object.name !== renderProps.props) {
+                    return;
+                }
+
+                // If we're using a weird props access, assume we can analyze it.
+                if (
+                    memberExpression.computed ||
+                    (memberExpression.property.type !== "Literal" && memberExpression.property.type !== "Identifier")
+                ) {
+                    componentFixer.unknownPropsAccess = true;
+                    return;
+                }
+
+                switch (memberExpression.property.type) {
+                    case "Identifier":
+                        componentFixer.usesChildrenInBody = memberExpression.property.name === "children";
+                        break;
+                    case "Literal":
+                        componentFixer.usesChildrenInBody = memberExpression.property.value === "children";
+                        break;
+                }
+            },
+            [`CallExpression[callee.name='${omniscientImport}']:exit`]: function(node: EsNode) {
+                if (componentFixer == null) {
+                    throw Error("wat");
+                }
                 const calli = node as CallExpression;
                 if (!componentFixer.isError(calli)) {
                     return;
@@ -149,6 +243,7 @@ const omniscientComponentRule: Rule.RuleModule = {
                     });
                 }
 
+                componentFixer = null;
                 return;
             },
         };

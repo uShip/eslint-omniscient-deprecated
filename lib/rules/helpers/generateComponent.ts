@@ -1,15 +1,20 @@
 export interface ComponentInformation {
     name: string;
     wrapped: boolean;
-    staticProperties: string[];
+    properties: PropertyInformation[];
     renderBody: string;
     areEqualFunction: string | null;
+}
+
+export interface PropertyInformation {
+    isStatic: boolean;
+    getter?: boolean;
+    body: string;
 }
 
 export interface ClassInformation extends ComponentInformation {
     extendsName: string;
     constructorLines: string[];
-    instanceProperties: string[];
 }
 
 export interface FunctionInformation extends ComponentInformation {
@@ -22,15 +27,9 @@ function generateClassComponent(classInfo: ClassInformation, canUseClassProperti
         classBody.push(`(() => {`);
     }
 
-    const {
-        name,
-        extendsName,
-        constructorLines,
-        instanceProperties,
-        staticProperties,
-        renderBody,
-        areEqualFunction,
-    } = classInfo;
+    const { name, extendsName, constructorLines, properties, renderBody, areEqualFunction } = classInfo;
+
+    let localProps = [...properties];
 
     if (areEqualFunction) {
         const shouldUpdateBody: string[] = [];
@@ -39,9 +38,9 @@ function generateClassComponent(classInfo: ClassInformation, canUseClassProperti
             `    return !(${areEqualFunction}(this.props, nextProps) && ((!oldState && !newState) || ${areEqualFunction}(this.state, nextState)));`
         );
         shouldUpdateBody.push(`}`);
-        instanceProperties.unshift(shouldUpdateBody.join("\n"));
+        localProps.unshift({ isStatic: false, body: shouldUpdateBody.join("\n") });
     }
-    instanceProperties.unshift(`render() ${renderBody}`);
+    localProps.unshift({ isStatic: false, body: `render() ${renderBody}` });
 
     classBody.push(`class ${name} extends ${extendsName} {`);
 

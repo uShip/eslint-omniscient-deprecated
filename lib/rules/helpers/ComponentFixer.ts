@@ -10,6 +10,7 @@ import {
     FunctionExpression,
     Property,
     ReturnStatement,
+    ObjectPattern,
 } from "estree";
 import prettier from "prettier";
 import { OmniscientComponentRuleOptions } from "../omniscient-component";
@@ -20,14 +21,27 @@ type ComponentFixerOptions = OmniscientComponentRuleOptions;
 export class ComponentFixer {
     private _context: Rule.RuleContext;
     private _options: ComponentFixerOptions;
+    private _calli: CallExpression;
 
-    public constructor(context: Rule.RuleContext, options: ComponentFixerOptions) {
+    public constructor(context: Rule.RuleContext, options: ComponentFixerOptions, calli: CallExpression) {
         this._context = context;
         this._options = options;
+        this._calli = calli;
+    }
+
+    public usesChildrenInBody = false;
+    public unknownPropsAccess = false;
+
+    public get componentCall(): CallExpression {
+        return this._calli;
+    }
+
+    public get renderFunction(): FunctionExpression {
+        return this.componentCall.arguments[this.componentCall.arguments.length - 1] as FunctionExpression;
     }
 
     public isError(calli: CallExpression): boolean {
-        const componentImportName = this.getOmniscientImportName();
+        const componentImportName = ComponentFixer.getOmniscientImportName(this._context);
         if (!componentImportName) {
             return false;
         }
@@ -109,7 +123,8 @@ export class ComponentFixer {
 
         // Get component base information
         const isLikelyMemoizable = this.isLikelyMemoizable(calli);
-        const imports = this.getBaseComponentFixitAndNames(fixer, isLikelyMemoizable, componentMixins == null);
+        const isLikelyFunctional = this.isLikelyFunctional(calli, sourceCode, componentMixins);
+        const imports = this.getBaseComponentFixitAndNames(fixer, isLikelyMemoizable, isLikelyFunctional);
         if (imports == null) {
             throw Error("Unable to process imports for file");
         }
@@ -198,8 +213,8 @@ export class ComponentFixer {
         return fixits;
     }
 
-    private getOmniscientImport(): ImportDeclaration | undefined | null {
-        let topLevel: Scope.Scope = this._context.getScope();
+    private static getOmniscientImport(context: Rule.RuleContext): ImportDeclaration | undefined | null {
+        let topLevel: Scope.Scope = context.getScope();
         while (topLevel.upper) {
             topLevel = topLevel.upper;
         }
@@ -216,8 +231,8 @@ export class ComponentFixer {
         });
     }
 
-    public getOmniscientImportName(): string | null {
-        const omniscient = this.getOmniscientImport();
+    public static getOmniscientImportName(context: Rule.RuleContext): string | null {
+        const omniscient = ComponentFixer.getOmniscientImport(context);
 
         if (!omniscient) {
             return null;
@@ -409,43 +424,38 @@ export class ComponentFixer {
         return body;
     }
 
-    private mapMixinToProperty(property: Property): string[] {
+    private mapMixinToProperty(property: Property): PropertyInformation[] {
         const sourceCode = this._context.getSourceCode();
 
-        let name = "";
-        const key = property.key;
-        switch (key.type) {
-            case "Literal":
-                name = `${key.value}`;
-                break;
-            case "Identifier":
-                name = key.name;
-                break;
-            default:
-                name = sourceCode.getText(key);
-        }
-
-        if (property.computed) {
-            name = `[${name}]`;
-        }
-
-        if (name === "propTypes") {
-            name = `static ${name}`;
-        }
+        let name = ComponentFixer.getPropName(property, sourceCode);
 
         if (name === "getDefaultProps") {
             const body = property.value;
             if (body.type !== "FunctionExpression" || body.body.type !== "BlockStatement") {
                 return [
-                    `static defaultProps = ${name}();`,
-                    this.propertyBodyToSource(property, `static ${name}`, sourceCode),
+                    { isStatic: true, lines: `defaultProps = ${name}();` },
+                    { isStatic: true, lines: this.propertyBodyToSource(property, `static ${name}`, sourceCode) },
                 ];
             } else if (body.body.body[0].type !== "ReturnStatement") {
-                return [`static get defaultProps${sourceCode.getText(body)}`];
+                return [{ isStatic: true, getter: true, lines: `defaultProps${sourceCode.getText(body)}` }];
             }
-            return [`static defaultProps = ${sourceCode.getText((body.body.body as [ReturnStatement])[0].argument!)};`];
+            return [
+                {
+                    isStatic: true,
+                    lines: `defaultProps = ${sourceCode.getText((body.body.body as [ReturnStatement])[0].argument!)};`,
+                },
+            ];
         }
-        return [this.propertyBodyToSource(property, name, sourceCode)];
+
+        let isStatic = false;
+        if (property.computed) {
+            name = `[${name}]`;
+        }
+
+        if (ComponentFixer.validFuncStatics.includes(name)) {
+            isStatic = true;
+        }
+        return [{ isStatic, lines: this.propertyBodyToSource(property, name, sourceCode) }];
     }
 
     private getMethods(properties: Property[]): Property[] {
@@ -534,8 +544,80 @@ export class ComponentFixer {
      * @param calli The source call expression
      */
     private isLikelyMemoizable(calli: CallExpression): boolean {
-        const sourceCode = this._context.getSourceCode();
+        const renderFunc = calli.arguments[calli.arguments.length - 1] as FunctionExpression;
+        const renderProps = ComponentFixer.getRenderProps(renderFunc);
+
+        // Check if we use the children prop. If we do, it's pointless to memoize by default.
+        if (renderProps.hasProps) {
+            if (this.usesChildrenInBody) {
+                return false;
+            }
+            if (renderProps.isObjectPattern) {
+                const isChildrenProp = (prop: Property): boolean =>
+                    prop.key.type === "Identifier" && prop.key.name === "children";
+                if (renderProps.props.properties.some(isChildrenProp)) return false;
+            }
+        }
+
+        // We should maybe eventually do a more interesting hurestic for complex state or props.
+        return true;
+    }
+
+    private static getPropName(prop: Property, sourceCode: SourceCode): string {
+        const key = prop.key;
+        switch (key.type) {
+            case "Literal":
+                return `${key.value}`;
+            case "Identifier":
+                return key.name;
+            default:
+                return sourceCode.getText(key);
+        }
+    }
+
+    private static mixinToStatic = [["getDefaultProps", "defaultProps"]];
+
+    private static mapToStatic(mixinPropName: string): string | null {
+        for (const set in this.mixinToStatic) {
+            if (set[0] === mixinPropName) {
+                return set[1];
+            }
+        }
+        return null;
+    }
+
+    private static validFuncStatics = ["contextTypes", "propTypes", "defaultProps", "displayName"];
+
+    private isLikelyFunctional(calli: CallExpression, sourceCode: SourceCode, mixin: ObjectExpression | null): boolean {
+        // If we use state, this can't be reduced to a simple function.
+        if (mixin) {
+            const mixinProps = mixin.properties;
+
+            // Check if the mixin has unsupported static props.
+            for (const prop of mixinProps) {
+                const name = ComponentFixer.getPropName(prop, sourceCode);
+                const mappedName = ComponentFixer.mapToStatic(name) || name;
+                if (!ComponentFixer.validFuncStatics.includes(mappedName)) {
+                    return false;
+                }
+            }
+        }
         return !sourceCode.getText(calli).includes("this.state");
+    }
+
+    public static getRenderProps(renderFunc: FunctionExpression): EmptyProps | NamedProps | DestructedProps {
+        const propsArgument = renderFunc.params.length > 0 ? renderFunc.params[0] : null;
+        if (propsArgument == null) {
+            return { hasProps: false };
+        }
+        switch (propsArgument.type) {
+            case "Identifier":
+                return { hasProps: true, isObjectPattern: false, props: propsArgument.name };
+            case "ObjectPattern":
+                return { hasProps: true, isObjectPattern: true, props: propsArgument };
+            default:
+                throw Error("Unknown argument pattern for render props");
+        }
     }
 
     private formatAndReplace(callExpression: CallExpression, fixer: Rule.RuleFixer, newBody: string): Rule.Fix {
@@ -559,15 +641,35 @@ export class ComponentFixer {
 
         return fixer.replaceText(parent, formattedBody);
     }
-
-    private smartQuote(text: string): string {
-        const quoteMarks = text.includes(`"`) ? (text.includes(`'`) ? "`" : `'`) : '"';
-        return `${quoteMarks}${text}${quoteMarks}`;
-    }
 }
 
 interface ImportInformation {
     importName: string;
     importModule?: string;
     fixit?: Rule.Fix;
+}
+
+interface Props {
+    hasProps: boolean;
+}
+
+interface EmptyProps extends Props {
+    hasProps: false;
+}
+
+interface PresentProps extends Props {
+    hasProps: true;
+    isObjectPattern: boolean;
+}
+
+interface NamedProps extends PresentProps {
+    hasProps: true;
+    isObjectPattern: false;
+    props: string;
+}
+
+interface DestructedProps extends PresentProps {
+    hasProps: true;
+    isObjectPattern: true;
+    props: ObjectPattern;
 }
