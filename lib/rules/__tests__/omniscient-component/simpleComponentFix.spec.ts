@@ -44,6 +44,25 @@ const TestComponent = component("TestComponent", () => {
         expect(output).toMatchSnapshot();
     });
 
+    it("should convert simple component to function when has memo", () => {
+        const input = `
+import component from 'omniscient';
+
+const TestComponent = component("TestComponent", ({test}) => {
+    return (<h1>{test}</h1>);
+})`;
+        const output = fix(
+            input,
+            withRuleOptions({
+                memoImport: "memo",
+                memoModule: "react",
+                passAreEqualToMemo: false,
+            })
+        );
+        expect(output).toBeFixed();
+        expect(output).toMatchSnapshot();
+    });
+
     it("should convert component with raw props", () => {
         const input = `
 import component from 'omniscient';

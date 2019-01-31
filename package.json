@@ -12,7 +12,7 @@
     "scripts": {
         "lint:types": "tsc --noEmit",
         "lint:rules": "eslint lib/**/*.{ts,tsx}",
-        "format": "prettier --write {lib,docs}/**/*.{ts,tsx,md}",
+        "format": "prettier --write {lib,docs}/**/*.{ts,tsx,md} --ignore-path **/*.{in,out}.js",
         "build": "run-s clean lint:** build:**",
         "clean": "rimraf ./dist/",
         "build:typescript": "tsc",

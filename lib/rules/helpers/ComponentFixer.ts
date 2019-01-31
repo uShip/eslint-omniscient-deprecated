@@ -153,7 +153,7 @@ export class ComponentFixer {
         }
 
         const renderFunc = calli.arguments[calli.arguments.length - 1] as FunctionExpression;
-        const renderBody = this.createRenderBody(renderFunc, sourceCode, methods);
+        const renderBody = this.createRenderBody(renderFunc, sourceCode, methods, classForm);
 
         let body: string;
         if (classForm) {
@@ -171,6 +171,7 @@ export class ComponentFixer {
                 this._options.useClassProperties
             );
         } else {
+            const props = renderFunc.params.length > 0 ? sourceCode.getText(renderFunc.params[0]) : "";
             body = generateFunctionComponent(
                 {
                     name: className,
@@ -179,7 +180,7 @@ export class ComponentFixer {
                     renderBody,
                     areEqualFunction:
                         canUseAreEqual && this._options.passAreEqualToMemo ? areEqualInfo!.importName : null,
-                    props: "", // TODO
+                    props,
                 },
                 this._options.memoImport
             );
@@ -462,7 +463,12 @@ export class ComponentFixer {
         return methods;
     }
 
-    private createRenderBody(renderFunc: BaseFunction, sourceCode: SourceCode, methods: Property[]): string {
+    private createRenderBody(
+        renderFunc: BaseFunction,
+        sourceCode: SourceCode,
+        methods: Property[],
+        isClassForm: boolean
+    ): string {
         const hasPropsArgument = renderFunc.params.length > 0;
 
         const isExpression = renderFunc.body.type !== "BlockStatement";
@@ -475,7 +481,7 @@ export class ComponentFixer {
         }
 
         let propsInit = "";
-        if (hasPropsArgument) {
+        if (hasPropsArgument && isClassForm) {
             const propsArg = renderFunc.params[0];
             if (propsArg.type === "Identifier") {
                 propsInit = `const ${propsArg.name} = this.props;`;
