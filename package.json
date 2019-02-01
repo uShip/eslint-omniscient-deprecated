@@ -62,7 +62,7 @@
             "npm run format",
             "git add"
         ],
-        "lib/**/*.{js,ts}": [
+        "lib/**/*.ts": [
             "yarn format",
             "npm run lint:rules",
             "git add"
