@@ -11,10 +11,12 @@ import component from 'omniscient';
 import { getDefaultPropsFor } from 'test';
 
 class TestComponent extends Component {
-    static get defaultProps() {
+    static defaultProps = (() => {
         const test = 2;
         return getDefaultPropsFor(test);
-    }
+    })();
+
+    static displayName = \\"TestComponent\\";
 
     shouldComponentUpdate(nextProps, nextState) {
         return !(
@@ -28,8 +30,6 @@ class TestComponent extends Component {
         const { label } = this.props;
         return <h1>{label}</h1>;
     }
-
-    static displayName = \\"TestComponent\\";
 }",
 }
 `;
@@ -46,6 +46,8 @@ import component from 'omniscient';
 class TestComponent extends Component {
     static defaultProps = { label: \\"test\\" };
 
+    static displayName = \\"TestComponent\\";
+
     shouldComponentUpdate(nextProps, nextState) {
         return !(
             isEqualImmutable(this.props, nextProps) &&
@@ -58,8 +60,6 @@ class TestComponent extends Component {
         const { label } = this.props;
         return <h1>{label}</h1>;
     }
-
-    static displayName = \\"TestComponent\\";
 }",
 }
 `;
@@ -74,10 +74,9 @@ import { isEqualImmutable } from 'ImmutableComponent';
 import component from 'omniscient';
 
 class TestComponent extends Component {
-    constructor(props) {
-        super(props);
-        this.state = { i: 1 };
-    }
+    static state = { i: 1 };
+
+    static displayName = \\"TestComponent\\";
 
     shouldComponentUpdate(nextProps, nextState) {
         return !(
@@ -91,8 +90,6 @@ class TestComponent extends Component {
         const { label } = this.props;
         return <h1>{label}</h1>;
     }
-
-    static displayName = \\"TestComponent\\";
 }",
 }
 `;
@@ -111,6 +108,8 @@ class TestComponent extends Component {
         label: PropTypes.string
     };
 
+    static displayName = \\"TestComponent\\";
+
     shouldComponentUpdate(nextProps, nextState) {
         return !(
             isEqualImmutable(this.props, nextProps) &&
@@ -123,8 +122,6 @@ class TestComponent extends Component {
         const { label } = this.props;
         return <h1>{label}</h1>;
     }
-
-    static displayName = \\"TestComponent\\";
 }",
 }
 `;

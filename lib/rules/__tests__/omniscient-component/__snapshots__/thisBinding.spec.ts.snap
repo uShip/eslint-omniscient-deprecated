@@ -10,11 +10,17 @@ import { isEqualImmutable } from 'ImmutableComponent';
 import component from 'omniscient';
 
 class TestComponent extends Component {
-    constructor(props) {
-        super(props);
-        this.state = { i: 1 };
-    }
+    static state = { i: 1 };
 
+    static displayName = \\"TestComponent\\";
+
+    shouldComponentUpdate(nextProps, nextState) {
+        return !(
+            isEqualImmutable(this.props, nextProps) &&
+            ((!oldState && !newState) ||
+                isEqualImmutable(this.state, nextState))
+        );
+    }
     thatThing = a => {
         return a;
     };
@@ -27,14 +33,6 @@ class TestComponent extends Component {
         e.preventDefault();
     };
 
-    shouldComponentUpdate(nextProps, nextState) {
-        return !(
-            isEqualImmutable(this.props, nextProps) &&
-            ((!oldState && !newState) ||
-                isEqualImmutable(this.state, nextState))
-        );
-    }
-
     render() {
         const { label } = this.props;
         const options = {
@@ -43,8 +41,6 @@ class TestComponent extends Component {
         };
         return <button onClick={this.handleClick}>Test</button>;
     }
-
-    static displayName = \\"TestComponent\\";
 }",
 }
 `;
@@ -59,11 +55,13 @@ import { isEqualImmutable } from 'ImmutableComponent';
 import component from 'omniscient';
 
 class TestComponent extends Component {
-    constructor(props) {
-        super(props);
-        this.state = { i: 1 };
+    shouldComponentUpdate(nextProps, nextState) {
+        return !(
+            isEqualImmutable(this.props, nextProps) &&
+            ((!oldState && !newState) ||
+                isEqualImmutable(this.state, nextState))
+        );
     }
-
     thatThing(a) {
         return a;
     }
@@ -76,14 +74,6 @@ class TestComponent extends Component {
         e.preventDefault();
     }
 
-    shouldComponentUpdate(nextProps, nextState) {
-        return !(
-            isEqualImmutable(this.props, nextProps) &&
-            ((!oldState && !newState) ||
-                isEqualImmutable(this.state, nextState))
-        );
-    }
-
     render() {
         const { label } = this.props;
         const options = {
@@ -94,6 +84,7 @@ class TestComponent extends Component {
     }
 }
 
-TestComponent.displayName = \\"TestComponent\\";",
+TestComponent.displayName = \\"TestComponent\\";
+TestComponent.state = { i: 1 };",
 }
 `;

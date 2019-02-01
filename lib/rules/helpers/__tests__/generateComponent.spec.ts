@@ -1,98 +1,122 @@
 import {
-    ClassInformation,
+    ClassComponentInformation,
     generateClassComponent,
-    FunctionInformation,
+    FunctionComponentInformation,
     generateFunctionComponent,
+    ComponentProperty,
 } from "../generateComponent";
+import { SourceCode } from "eslint";
 
 describe("generateComponent", () => {
+    const mockSource = { sourceCode: (null as any) as SourceCode, canUseClassProperties: true };
+
+    const displayName: ComponentProperty = {
+        type: "Value",
+        isStatic: true,
+        key: { text: "displayName" },
+        rawText: "'Test'",
+    };
+
+    const getAProp: ComponentProperty = {
+        type: "Function",
+        isStatic: false,
+        key: { text: "getA" },
+        rawText: "() => { return <h1>Test</h1>; }",
+    };
+
     it("should generate class component", () => {
-        const classDefinition: ClassInformation = {
+        const stateProp: ComponentProperty = {
+            type: "Value",
+            isStatic: false,
+            key: { text: "state" },
+            rawText: "{a : 1}",
+        };
+        const classDefinition: ClassComponentInformation = {
             name: "Test",
             wrapped: false,
-            staticProperties: ["displayName = 'Test';"],
+            properties: [stateProp, displayName, getAProp],
             renderBody: "{ return this.getA(); }",
             areEqualFunction: "is",
             extendsName: "Component",
-            constructorLines: [`this.state = {a : 1};`],
-            instanceProperties: [`getA = () => { return <h1>Test</h1>; };`],
         };
 
-        const output = generateClassComponent(classDefinition, true);
+        const output = generateClassComponent(mockSource, classDefinition);
         expect(output).toMatchSnapshot();
     });
 
     it("should generate wrapped class component", () => {
-        const classDefinition: ClassInformation = {
+        const classDefinition: ClassComponentInformation = {
             name: "Test",
             wrapped: true,
-            staticProperties: ["displayName = 'Test';"],
+            properties: [displayName],
             renderBody: "{ return null; }",
             areEqualFunction: "is",
             extendsName: "Component",
-            constructorLines: [],
-            instanceProperties: [],
         };
 
-        const output = generateClassComponent(classDefinition, true);
+        const output = generateClassComponent(mockSource, classDefinition);
         expect(output).toMatchSnapshot();
     });
 
     it("should generate class component without class properties", () => {
-        const classDefinition: ClassInformation = {
+        const stateProp: ComponentProperty = {
+            type: "Value",
+            isStatic: false,
+            key: { text: "state" },
+            rawText: "{a : 1}",
+        };
+        const classDefinition: ClassComponentInformation = {
             name: "Test",
             wrapped: false,
-            staticProperties: ["displayName = 'Test';"],
+            properties: [displayName, stateProp, getAProp],
             renderBody: "{ return this.getA().bind(this); }",
             areEqualFunction: "is",
             extendsName: "Component",
-            constructorLines: [`this.state = {a : 1};`],
-            instanceProperties: [`getA() { return <h1>Test</h1>; };`],
         };
 
-        const output = generateClassComponent(classDefinition, false);
+        const output = generateClassComponent(mockSource, classDefinition);
         expect(output).toMatchSnapshot();
     });
 
     it("should generate function component", () => {
-        const funcDefinition: FunctionInformation = {
+        const funcDefinition: FunctionComponentInformation = {
             name: "Test",
             wrapped: false,
-            staticProperties: ["displayName = 'Test';"],
+            properties: [displayName],
             props: "{a}",
             renderBody: "{ return a; }",
             areEqualFunction: "is",
         };
 
-        const output = generateFunctionComponent(funcDefinition, null);
+        const output = generateFunctionComponent(mockSource, funcDefinition, null);
         expect(output).toMatchSnapshot();
     });
 
     it("should generate wrapped function component", () => {
-        const funcDefinition: FunctionInformation = {
+        const funcDefinition: FunctionComponentInformation = {
             name: "Test",
             wrapped: true,
-            staticProperties: ["displayName = 'Test';"],
+            properties: [displayName],
             props: "{a}",
             renderBody: "{ return a; }",
             areEqualFunction: "is",
         };
 
-        const output = generateFunctionComponent(funcDefinition, null);
+        const output = generateFunctionComponent(mockSource, funcDefinition, null);
         expect(output).toMatchSnapshot();
     });
 
     it("should generate memoized function component", () => {
-        const funcDefinition: FunctionInformation = {
+        const funcDefinition: FunctionComponentInformation = {
             name: "Test",
             wrapped: false,
-            staticProperties: ["displayName = 'Test';"],
+            properties: [displayName],
             props: "{a}",
             renderBody: "{ return a; }",
             areEqualFunction: "is",
         };
 
-        const output = generateFunctionComponent(funcDefinition, "React.memo");
+        const output = generateFunctionComponent(mockSource, funcDefinition, "React.memo");
         expect(output).toMatchSnapshot();
     });
 });

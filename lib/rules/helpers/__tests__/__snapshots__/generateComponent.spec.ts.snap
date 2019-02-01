@@ -2,41 +2,38 @@
 
 exports[`generateComponent should generate class component 1`] = `
 "class Test extends Component {
-constructor(props) {
-super(props);
-this.state = {a : 1};
-}
-
-getA = () => { return <h1>Test</h1>; };
+static displayName = 'Test';
 
 shouldComponentUpdate(nextProps, nextState) {
-    return !(is(this.props, nextProps) && ((!oldState && !newState) || is(this.state, nextState)));
-}
+
+                return !(is(this.props, nextProps) && ((!oldState && !newState) || is(this.state, nextState)));
+
+            }
+getA = () => { return <h1>Test</h1>; }
+
+state = {a : 1}
 
 render() { return this.getA(); }
-
-static displayName = 'Test';
 }
 "
 `;
 
 exports[`generateComponent should generate class component without class properties 1`] = `
 "class Test extends Component {
-constructor(props) {
-super(props);
-this.state = {a : 1};
-}
-
-getA() { return <h1>Test</h1>; };
+static displayName = 'Test';
 
 shouldComponentUpdate(nextProps, nextState) {
-    return !(is(this.props, nextProps) && ((!oldState && !newState) || is(this.state, nextState)));
-}
+
+                return !(is(this.props, nextProps) && ((!oldState && !newState) || is(this.state, nextState)));
+
+            }
+getA = () => { return <h1>Test</h1>; }
+
+state = {a : 1}
 
 render() { return this.getA().bind(this); }
 }
-
-Test.displayName = 'Test';"
+"
 `;
 
 exports[`generateComponent should generate function component 1`] = `
@@ -52,13 +49,15 @@ Test.displayName = 'Test';"
 exports[`generateComponent should generate wrapped class component 1`] = `
 "(() => {
 class Test extends Component {
+static displayName = 'Test';
+
 shouldComponentUpdate(nextProps, nextState) {
-    return !(is(this.props, nextProps) && ((!oldState && !newState) || is(this.state, nextState)));
-}
+
+                return !(is(this.props, nextProps) && ((!oldState && !newState) || is(this.state, nextState)));
+
+            }
 
 render() { return null; }
-
-static displayName = 'Test';
 }
 
 return Test;

@@ -12,6 +12,8 @@ import component from 'omniscient';
 function withProps(Component, props) {
     return (() => {
     class AnonymousComponent extends Component0 {
+        static displayName = Component.displayName + \\"_WithProps\\";
+
         shouldComponentUpdate(nextProps, nextState) {
             return !(
                 isEqualImmutable(this.props, nextProps) &&
@@ -24,8 +26,6 @@ function withProps(Component, props) {
             const newProps = this.props;
             return <Component {...newProps} {...props} />;
         }
-
-        static displayName = Component.displayName + \\"_WithProps\\";
     }
 
     return AnonymousComponent;

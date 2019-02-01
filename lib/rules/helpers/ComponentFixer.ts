@@ -5,16 +5,22 @@ import {
     CallExpression,
     Node as EsNode,
     Identifier,
-    BaseFunction,
+    Function as EsFunction,
     ObjectExpression,
     FunctionExpression,
     Property,
-    ReturnStatement,
     ObjectPattern,
 } from "estree";
 import prettier from "prettier";
 import { OmniscientComponentRuleOptions } from "../omniscient-component";
-import { generateClassComponent, generateFunctionComponent, PropertyInformation } from "./generateComponent";
+import {
+    generateClassComponent,
+    generateFunctionComponent,
+    ComponentProperty,
+    ComponentValueProperty,
+    ComponentMethodProperty,
+} from "./generateComponent";
+import { stat } from "fs";
 
 type ComponentFixerOptions = OmniscientComponentRuleOptions;
 
@@ -135,34 +141,21 @@ export class ComponentFixer {
         const anonymousClass = className === "AnonymousComponent";
 
         // Begin building the actual render body
-        const constructorLines: string[] = [];
-        const bodyProps = [];
-        const staticProps: string[] = [];
+        const properties: ComponentProperty[] = [];
         if (displayName) {
-            staticProps.push(`displayName = ${displayName};`);
+            properties.push({
+                type: "Value",
+                isStatic: true,
+                key: { text: "displayName" },
+                rawText: displayName,
+            });
         }
 
         let methods: Property[] = [];
         if (componentMixins) {
             for (const property of componentMixins.properties) {
-                if (property.key.type === "Identifier" && property.key.name === "getInitialState") {
-                    const body = property.value;
-                    if (body.type !== "FunctionExpression" || body.body.type !== "BlockStatement") {
-                        bodyProps.push(this.propertyBodyToSource(property, "getInitialState", sourceCode));
-                        constructorLines.push(`this.state = getInitialState();`);
-                    } else {
-                        const stateBody = sourceCode.getText(
-                            ((body as FunctionExpression).body.body as [ReturnStatement])[0].argument!
-                        );
-                        constructorLines.push(`this.state = ${stateBody};`);
-                    }
-                    continue;
-                }
-
-                const text = this.mapMixinToProperty(property);
-                if (text) {
-                    bodyProps.push(...text);
-                }
+                const mixinProps = this.mapMixinToProperty(property);
+                properties.push(...mixinProps);
             }
             methods = this.getMethods(componentMixins.properties);
         }
@@ -173,25 +166,24 @@ export class ComponentFixer {
         let body: string;
         if (classForm) {
             body = generateClassComponent(
+                { sourceCode, canUseClassProperties: this._options.useClassProperties },
                 {
                     name: className,
-                    extendsName: componentImportName,
-                    constructorLines,
                     wrapped: anonymousClass,
-                    instanceProperties: bodyProps,
-                    staticProperties: staticProps,
+                    properties,
+                    extendsName: componentImportName,
                     renderBody,
                     areEqualFunction: canUseAreEqual ? areEqualInfo!.importName : null,
-                },
-                this._options.useClassProperties
+                }
             );
         } else {
             const props = renderFunc.params.length > 0 ? sourceCode.getText(renderFunc.params[0]) : "";
             body = generateFunctionComponent(
+                { sourceCode },
                 {
                     name: className,
                     wrapped: anonymousClass,
-                    staticProperties: staticProps,
+                    properties,
                     renderBody,
                     areEqualFunction:
                         canUseAreEqual && this._options.passAreEqualToMemo ? areEqualInfo!.importName : null,
@@ -405,57 +397,77 @@ export class ComponentFixer {
         }
     }
 
-    private propertyBodyToSource(property: Property, name: string, sourceCode: SourceCode): string {
-        let body = "";
-        if (property.shorthand) {
-            body = `${name} = ${name};`;
-        } else if (property.method) {
-            if (this._options.useClassProperties) {
-                let methodText = sourceCode.getText(property.value);
-                methodText = methodText.replace(/\) \{/, ") => {");
-                body = `${name} = ${methodText}`;
-            } else {
-                body = sourceCode.getText(property);
-            }
-        } else {
-            // TODO: Special case functions
-            body = `${name} = ${sourceCode.getText(property.value)};`;
-        }
-        return body;
-    }
-
-    private mapMixinToProperty(property: Property): PropertyInformation[] {
+    private mapMixinToProperty(property: Property): (ComponentMethodProperty | ComponentValueProperty)[] {
         const sourceCode = this._context.getSourceCode();
 
-        let name = ComponentFixer.getPropName(property, sourceCode);
+        let name = "";
+        const rawName = (name = ComponentFixer.getPropName(property, sourceCode));
 
-        if (name === "getDefaultProps") {
-            const body = property.value;
-            if (body.type !== "FunctionExpression" || body.body.type !== "BlockStatement") {
-                return [
-                    { isStatic: true, lines: `defaultProps = ${name}();` },
-                    { isStatic: true, lines: this.propertyBodyToSource(property, `static ${name}`, sourceCode) },
-                ];
-            } else if (body.body.body[0].type !== "ReturnStatement") {
-                return [{ isStatic: true, getter: true, lines: `${sourceCode.getText(body)}` }];
-            }
-            return [
-                {
-                    isStatic: true,
-                    lines: `defaultProps = ${sourceCode.getText((body.body.body as [ReturnStatement])[0].argument!)};`,
-                },
-            ];
+        if (ComponentFixer.mixinToStatic.has(name)) {
+            name = ComponentFixer.mixinToStatic.get(name)!;
         }
 
         let isStatic = false;
-        if (property.computed) {
+        let isComputedIdentifier =
+            property.computed && (property.key.type !== "Literal" || typeof property.key.value === "string");
+        if (isComputedIdentifier) {
             name = `[${name}]`;
         }
 
         if (ComponentFixer.validFuncStatics.includes(name)) {
             isStatic = true;
         }
-        return [{ isStatic, lines: this.propertyBodyToSource(property, name, sourceCode) }];
+
+        // Special case the getInitialState conversion
+        if (rawName === "getInitialState" || rawName === "getDefaultProps") {
+            const reduced = this.reduceProperty(property);
+            if (reduced) {
+                return [
+                    {
+                        type: "Value",
+                        isStatic: true,
+                        rawText: reduced,
+                        key: { text: name },
+                    },
+                ];
+            }
+            let rawText = `(${sourceCode.getText(property.value).replace(/\) \{/, ") => {")})`;
+            if (property.value.type.includes("Function")) {
+                rawText += "()";
+            }
+            return [
+                {
+                    type: "Value",
+                    isStatic: true,
+                    rawText,
+                    key: { text: name },
+                },
+            ];
+        }
+
+        return [
+            {
+                key: {
+                    text: name,
+                    isComputedIdentifier,
+                },
+                isStatic,
+                body: property.value as any,
+                type: (property.value.type === "FunctionExpression" ? "Function" : "Value") as any,
+            },
+        ];
+    }
+
+    private reduceProperty(property: Property): string | undefined {
+        if (!property.value.type.includes("Function")) return;
+        const func = property.value as EsFunction;
+        if (func.body.type !== "BlockStatement") return;
+        const block = func.body;
+        if (block.body.length !== 1) return;
+        const statement = block.body[0];
+        if (statement.type !== "ReturnStatement") return;
+        if (statement.argument == null || statement.argument.type !== "ObjectExpression") return;
+        return this._context.getSourceCode().getText(statement.argument);
     }
 
     private getMethods(properties: Property[]): Property[] {
@@ -474,7 +486,7 @@ export class ComponentFixer {
     }
 
     private createRenderBody(
-        renderFunc: BaseFunction,
+        renderFunc: EsFunction,
         sourceCode: SourceCode,
         methods: Property[],
         isClassForm: boolean
@@ -575,7 +587,7 @@ export class ComponentFixer {
         }
     }
 
-    private static mixinToStatic = [["getDefaultProps", "defaultProps"]];
+    private static mixinToStatic = new Map([["getDefaultProps", "defaultProps"], ["getInitialState", "state"]]);
 
     private static mapToStatic(mixinPropName: string): string | null {
         for (const set in this.mixinToStatic) {
