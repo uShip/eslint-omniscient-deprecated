@@ -135,9 +135,6 @@ export class ComponentFixer {
             throw Error("Unable to process imports for file");
         }
         const { componentInfo, areEqualInfo, canUseAreEqual, classForm } = imports;
-        const componentImportName = componentInfo.importModule
-            ? `${componentInfo.importModule}.${componentInfo.importName}`
-            : componentInfo.importName;
         const anonymousClass = className === "AnonymousComponent";
 
         // Begin building the actual render body
@@ -165,6 +162,9 @@ export class ComponentFixer {
 
         let body: string;
         if (classForm) {
+            const componentImportName = componentInfo!.importModule
+                ? `${componentInfo!.importModule}.${componentInfo!.importName}`
+                : componentInfo!.importName;
             body = generateClassComponent(
                 { sourceCode, canUseClassProperties: this._options.useClassProperties },
                 {
@@ -195,7 +195,7 @@ export class ComponentFixer {
 
         const fixits: Rule.Fix[] = [];
 
-        if (componentInfo.fixit) {
+        if (componentInfo && componentInfo.fixit) {
             fixits.push(componentInfo.fixit);
         }
         if (areEqualInfo && areEqualInfo.fixit) {
@@ -238,13 +238,12 @@ export class ComponentFixer {
         // TODO: Support other ways of importing?
         return null;
     }
-
     private getBaseComponentFixitAndNames(
         fixer: Rule.RuleFixer,
         isLikelyMemoizable: boolean,
         isFunctional: boolean
     ): {
-        componentInfo: ImportInformation;
+        componentInfo: ImportInformation | null;
         areEqualInfo: ImportInformation | null;
         classForm: boolean;
         canUseAreEqual: boolean;
@@ -267,9 +266,16 @@ export class ComponentFixer {
             importName = usePure ? this._options.pureComponentImport! : this._options.componentImport;
             importModule = usePure ? this._options.pureComponentModule! : this._options.componentModule;
             canUseAreEqual = !usePure;
-        } else {
+        } else if (!isFunctional) {
             importName = this._options.componentImport;
             importModule = this._options.componentModule;
+        } else {
+            return {
+                classForm: false,
+                areEqualInfo: null,
+                componentInfo: null,
+                canUseAreEqual: false,
+            };
         }
 
         const componentInfo = this.getImportAndFixit(fixer, root, importName, importModule);
