@@ -44,6 +44,7 @@ export interface FunctionComponentInformation extends ComponentInformation {
 
 interface GeneratorContext {
     sourceCode: SourceCode;
+    isUnmemoizable: boolean;
     canUseClassProperties?: boolean;
 }
 
@@ -128,10 +129,15 @@ function generateClassComponent(context: GeneratorContext, classInfo: ClassCompo
 
     // If we have an isEqual question and there isn't an already implemented shouldComponentUpdate, provide our own.
     let shouldUpdateBody: string | null = null;
-    if (areEqualFunction && !properties.some(p => p.key.text === "shouldComponentUpdate")) {
+    if (!context.isUnmemoizable && areEqualFunction && !properties.some(p => p.key.text === "shouldComponentUpdate")) {
         shouldUpdateBody = `shouldComponentUpdate(nextProps, nextState) {\n
                 return !(${areEqualFunction}(this.props, nextProps) && ((!oldState && !newState) || ${areEqualFunction}(this.state, nextState)));\n
             }`;
+    }
+
+    if (context.isUnmemoizable) {
+        const shouldUpdateProperty = properties.filter(p => p.key.text === "shouldComponentUpdate");
+        if (shouldUpdateProperty.length > 0) properties.splice(properties.indexOf(shouldUpdateProperty[0]), 1);
     }
 
     classBody.push(`class ${name} extends ${extendsName} {`);

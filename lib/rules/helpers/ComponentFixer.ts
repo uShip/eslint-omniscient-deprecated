@@ -128,7 +128,7 @@ export class ComponentFixer {
         }
 
         // Get component base information
-        const isLikelyMemoizable = this.isLikelyMemoizable(calli);
+        const isLikelyMemoizable = this.isLikelyMemoizable(calli, sourceCode);
         const isLikelyFunctional = this.isLikelyFunctional(calli, sourceCode, componentMixins);
         const imports = this.getBaseComponentFixitAndNames(fixer, isLikelyMemoizable, isLikelyFunctional);
         if (imports == null) {
@@ -166,20 +166,24 @@ export class ComponentFixer {
                 ? `${componentInfo!.importModule}.${componentInfo!.importName}`
                 : componentInfo!.importName;
             body = generateClassComponent(
-                { sourceCode, canUseClassProperties: this._options.useClassProperties },
+                {
+                    sourceCode,
+                    isUnmemoizable: !isLikelyMemoizable,
+                    canUseClassProperties: this._options.useClassProperties,
+                },
                 {
                     name: className,
                     wrapped: anonymousClass,
                     properties,
                     extendsName: componentImportName,
                     renderBody,
-                    areEqualFunction: canUseAreEqual ? areEqualInfo!.importName : null,
+                    areEqualFunction: canUseAreEqual && isLikelyMemoizable ? areEqualInfo!.importName : null,
                 }
             );
         } else {
             const props = renderFunc.params.length > 0 ? sourceCode.getText(renderFunc.params[0]) : "";
             body = generateFunctionComponent(
-                { sourceCode },
+                { sourceCode, isUnmemoizable: !isLikelyMemoizable },
                 {
                     name: className,
                     wrapped: anonymousClass,
@@ -284,7 +288,7 @@ export class ComponentFixer {
         }
 
         let areEqualInfo: ReturnType<ComponentFixer["getImportAndFixit"]> | null = null;
-        if (canUseAreEqual) {
+        if (canUseAreEqual && isLikelyMemoizable) {
             areEqualInfo = this.getImportAndFixit(
                 fixer,
                 root,
@@ -561,7 +565,7 @@ export class ComponentFixer {
      * Attempts to make a guess as to wether or not a component declaration is stateless.
      * @param calli The source call expression
      */
-    private isLikelyMemoizable(calli: CallExpression): boolean {
+    private isLikelyMemoizable(calli: CallExpression, sourceCode: SourceCode): boolean {
         const renderFunc = calli.arguments[calli.arguments.length - 1] as FunctionExpression;
         const renderProps = ComponentFixer.getRenderProps(renderFunc);
 
@@ -575,6 +579,11 @@ export class ComponentFixer {
                     prop.key.type === "Identifier" && prop.key.name === "children";
                 if (renderProps.props.properties.some(isChildrenProp)) return false;
             }
+        }
+
+        const source = sourceCode.getText(calli);
+        if (source.includes("this.state") || source.includes("this.setState")) {
+            return false;
         }
 
         // We should maybe eventually do a more interesting hurestic for complex state or props.
@@ -620,7 +629,8 @@ export class ComponentFixer {
                 }
             }
         }
-        return !sourceCode.getText(calli).includes("this.state");
+        const source = sourceCode.getText(calli);
+        return !(source.includes("this.state") || source.includes("this.setState"));
     }
 
     public static getRenderProps(renderFunc: FunctionExpression): EmptyProps | NamedProps | DestructedProps {
