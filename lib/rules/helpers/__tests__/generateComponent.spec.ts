@@ -8,7 +8,7 @@ import {
 import { SourceCode } from "eslint";
 
 describe("generateComponent", () => {
-    const mockSource = { sourceCode: (null as any) as SourceCode, canUseClassProperties: true };
+    const mockSource = { sourceCode: (null as any) as SourceCode, canUseClassProperties: true, isUnmemoizable: false };
 
     const displayName: ComponentProperty = {
         type: "Value",
@@ -74,7 +74,7 @@ describe("generateComponent", () => {
             extendsName: "Component",
         };
 
-        const output = generateClassComponent(mockSource, classDefinition);
+        const output = generateClassComponent({ ...mockSource, ...{ canUseClassProperties: false } }, classDefinition);
         expect(output).toMatchSnapshot();
     });
 

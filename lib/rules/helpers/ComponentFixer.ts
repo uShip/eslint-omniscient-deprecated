@@ -69,49 +69,54 @@ export class ComponentFixer {
             return false;
         }
 
-        // Is the last argument a render expression?
+        // Is the last argument a valid render Function?
         if (!calli.arguments[calli.arguments.length - 1].type.includes("Expression")) {
             return false;
         }
 
-        // If we're only a render function, we're good.
-        if (calli.arguments.length === 1) {
-            return true;
-        }
-
         if (calli.arguments.length === 2) {
+            // Check if name or options
             switch (calli.arguments[0].type) {
                 case "Literal":
                 case "Identifier":
                 case "BinaryExpression":
-                    // This is a component display name;
-                    return true;
+                    // This is the component's displayName
+                    break;
                 case "ObjectExpression":
-                    // This is a component definition
-                    return true;
+                    // This is the component's mixins
+                    break;
                 default:
                     return false;
             }
-        }
-
-        if (calli.arguments.length === 3) {
+        } else if (calli.arguments.length === 3) {
+            // Check the displayName argument
+            switch (calli.arguments[0].type) {
+                case "Literal":
+                case "Identifier":
+                case "BinaryExpression":
+                    // This is the component's displayName
+                    break;
+                default:
+                    return false;
+            }
+            // Check the mixin argument
             switch (calli.arguments[1].type) {
                 case "ObjectExpression":
-                    // This is a component definition
-                    return true;
+                    // This is the component's mixins
+                    break;
                 default:
                     return false;
             }
         }
 
-        return false;
+        return true;
     }
 
-    public getFixit(calli: CallExpression): (fixer: Rule.RuleFixer) => Rule.Fix | Rule.Fix[] {
+    public getFixit(calli: CallExpression): (fixer: Rule.RuleFixer) => Rule.Fix[] {
         return (fixer: Rule.RuleFixer) => this.fix(calli, fixer);
     }
 
-    public fix(calli: CallExpression, fixer: Rule.RuleFixer): Rule.Fix | Rule.Fix[] {
+    public fix(calli: CallExpression, fixer: Rule.RuleFixer): Rule.Fix[] {
         const sourceCode = this._context.getSourceCode();
         const { displayName, className } = this.getComponentNames(calli);
 
@@ -121,8 +126,7 @@ export class ComponentFixer {
             !displayName && calli.arguments.length === 2 ? 0 : calli.arguments.length === 3 ? 1 : -1;
         if (componentOptionsArg >= 0) {
             if (calli.arguments[componentOptionsArg].type !== "ObjectExpression") {
-                console.debug("Non-object expressions not support.");
-                return [];
+                throw Error("Recieved non-ObjectExpression in options position.");
             }
             componentMixins = calli.arguments[componentOptionsArg] as ObjectExpression;
         }
@@ -132,7 +136,7 @@ export class ComponentFixer {
         const isLikelyFunctional = this.isLikelyFunctional(calli, sourceCode, componentMixins);
         const imports = this.getBaseComponentFixitAndNames(fixer, isLikelyMemoizable, isLikelyFunctional);
         if (imports == null) {
-            throw Error("Unable to process imports for file");
+            throw Error("Unable to process imports for file.");
         }
         const { componentInfo, areEqualInfo, canUseAreEqual, classForm } = imports;
         const anonymousClass = className === "AnonymousComponent";
