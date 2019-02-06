@@ -9,5 +9,5 @@ module.exports = {
             },
         },
     },
-    testPathIgnorePatterns: ["/node_modules/", "__setup__"],
+    testPathIgnorePatterns: ["/node_modules/", "__setup__", "/dist/"],
 };

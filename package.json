@@ -50,7 +50,7 @@
     },
     "license": "ISC",
     "peerDependencies": {
-        "eslint": "~5.9.0"
+        "eslint": "^5.12.1"
     },
     "dependencies": {
         "prettier": "^1.16.1"
