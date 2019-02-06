@@ -1,6 +1,6 @@
 {
     "name": "eslint-plugin-uship-omniscient",
-    "version": "0.14.0",
+    "version": "0.0.0-development",
     "description": "An eslint rule to lint for, and fix, usages of omniscient.",
     "keywords": [
         "eslint",
@@ -19,7 +19,8 @@
         "test": "jest",
         "test:debug": "node --inspect-brk ./node_modules/jest/bin/jest.js --runInBand",
         "test:watch": "jest --watch",
-        "prepublishOnly ": "run-s build"
+        "prepublishOnly": "run-s build",
+        "commit": "npx git-cz"
     },
     "devDependencies": {
         "@types/eslint": "^4.16.5",
@@ -29,6 +30,7 @@
         "@types/prettier": "^1.15.2",
         "@typescript-eslint/eslint-plugin": "^1.1.0",
         "babel-eslint": "^10.0.1",
+        "cz-conventional-changelog": "^2.1.0",
         "eslint": "^5.12.1",
         "eslint-plugin-prettier": "^3.0.1",
         "eslint-plugin-react": "^7.11.1",
@@ -38,6 +40,7 @@
         "lint-staged": "^8.1.1",
         "npm-run-all": "^4.1.5",
         "rimraf": "^2.6.2",
+        "semantic-release": "^15.13.3",
         "ts-jest": "^23.10.5",
         "ts-node": "^7.0.1",
         "typescript": "^3.2.1"
@@ -67,5 +70,14 @@
             "npm run lint:rules",
             "git add"
         ]
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/uShip/eslint-omniscient-deprecated.git"
+    },
+    "config": {
+        "commitizen": {
+            "path": "./node_modules/cz-conventional-changelog"
+        }
     }
 }
