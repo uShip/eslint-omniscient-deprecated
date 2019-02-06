@@ -20,7 +20,6 @@ import {
     ComponentValueProperty,
     ComponentMethodProperty,
 } from "./generateComponent";
-import { stat } from "fs";
 
 type ComponentFixerOptions = OmniscientComponentRuleOptions;
 
@@ -517,12 +516,14 @@ export class ComponentFixer {
         }
 
         let propsInit = "";
+        const reassignsProps = /\s?props\s*=\s*/g.test(renderBodySource);
+        const varKind = reassignsProps ? "let" : "const";
         if (hasPropsArgument && isClassForm) {
             const propsArg = renderFunc.params[0];
             if (propsArg.type === "Identifier") {
-                propsInit = `const ${propsArg.name} = this.props;`;
+                propsInit = `${varKind} ${propsArg.name} = this.props;`;
             } else if (propsArg.type === "ObjectPattern") {
-                propsInit = `const ${sourceCode.getText(propsArg)} = this.props;`;
+                propsInit = `${varKind} ${sourceCode.getText(propsArg)} = this.props;`;
             }
             propsInit += "\n        ";
         }
