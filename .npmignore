@@ -1,6 +1,0 @@
-.vscode/
-lib/
-tests/
-.eslintrc
-.tsconfig.json
-yarn.lock
