@@ -363,7 +363,7 @@ export class ComponentFixer {
             if (specifier.type === "ImportDefaultSpecifier") {
                 defaultImport = specifier.local.name;
             } else if (specifier.type === "ImportSpecifier") {
-                if (specifier.imported.name === importName) {
+                if (specifier.imported.name === baseName) {
                     return { importName: specifier.local.name };
                 }
                 lastImportSpecifier = specifier.range!;
@@ -376,7 +376,7 @@ export class ComponentFixer {
                 importName,
             };
         } else if (defaultImport) {
-            return { importModule: defaultImport, importName };
+            return { importModule: defaultImport, importName: baseName };
         }
         return null;
     }
