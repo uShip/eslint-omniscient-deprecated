@@ -5,10 +5,12 @@
 "use strict";
 
 import omniscientComponentRule from "./rules/omniscient-component";
+import RemoveOmniscientImport from "./rules/remove-omniscient-import";
 
 const plugin = {
     rules: {
         "component-deprecated": omniscientComponentRule,
+        "no-omniscient-import": RemoveOmniscientImport,
     },
 };
 
