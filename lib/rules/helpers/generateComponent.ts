@@ -50,6 +50,22 @@ interface GeneratorContext {
     canUseClassProperties?: boolean;
 }
 
+const reactInstanceLifecycleMethods = [
+    "componentDidMount",
+    "componentDidUpdate",
+    "componentWillUnmount",
+    "shouldComponentUpdate",
+    "getSnapshotBeforeUpdate",
+    "componentDidCatch",
+    // Deprecated, but we should still handle em
+    "componentWillMount",
+    "UNSAFE_componentWillMount",
+    "componentWillReceiveProps",
+    "UNSAFE_componentWillReceiveProps",
+    "componentWillUpdate",
+    "UNSAFE_componentWillUpdate",
+];
+
 function lc(property: PropertyInformation): string {
     return property.leadingComments && property.leadingComments.length > 0
         ? property.leadingComments.join("\n") + "\n"
@@ -74,7 +90,7 @@ function getBodyText({ sourceCode, canUseClassProperties }: GeneratorContext, pr
         return prop.rawText;
     }
     if (prop.type === "Function" && !prop.getter === true) {
-        if (canUseClassProperties) {
+        if (canUseClassProperties && !reactInstanceLifecycleMethods.includes(prop.key.text)) {
             return sourceCode.getText(prop.body).replace(/\) \{/, ") => {");
         }
     }
@@ -92,7 +108,7 @@ function getBodyProperty(context: GeneratorContext, property: ComponentProperty)
     if (property.type === "Value") {
         return `${lcLines}${property.key.text} = ${getBodyText(context, property)}${tcLines}`;
     } else {
-        if (context.canUseClassProperties) {
+        if (context.canUseClassProperties && !reactInstanceLifecycleMethods.includes(property.key.text)) {
             return `${lcLines}${property.key.text} = ${getBodyText(context, property)}${tcLines}`;
         }
         return `${lcLines}${property.key.text}${getBodyText(context, property)}${tcLines}`;
