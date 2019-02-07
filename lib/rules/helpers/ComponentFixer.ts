@@ -192,6 +192,17 @@ export class ComponentFixer {
             );
         } else {
             const props = renderFunc.params.length > 0 ? sourceCode.getText(renderFunc.params[0]) : "";
+            const areEqualName =
+                canUseAreEqual && areEqualInfo != null
+                    ? `${areEqualInfo!.importModule ? `${areEqualInfo!.importModule}.` : ""}${areEqualInfo!.importName}`
+                    : null;
+
+            const memoImportName =
+                componentInfo != null
+                    ? componentInfo!.importModule
+                        ? `${componentInfo!.importModule}.${componentInfo!.importName}`
+                        : componentInfo!.importName
+                    : null;
             body = generateFunctionComponent(
                 { sourceCode, isUnmemoizable: !isLikelyMemoizable },
                 {
@@ -199,11 +210,10 @@ export class ComponentFixer {
                     wrapped: anonymousClass,
                     properties,
                     renderBody,
-                    areEqualFunction:
-                        canUseAreEqual && this._options.passAreEqualToMemo ? areEqualInfo!.importName : null,
+                    areEqualFunction: areEqualName ? areEqualName : null,
                     props,
                 },
-                this._options.memoImport
+                memoImportName
             );
         }
 
@@ -275,6 +285,7 @@ export class ComponentFixer {
             importName = this._options.memoImport;
             importModule = this._options.memoModule;
             classForm = false;
+            canUseAreEqual = this._options.passAreEqualToMemo;
         } else if (isLikelyMemoizable) {
             const usePure = this._options.pureComponentImport != null && this._options.pureComponentImport != null;
             importName = usePure ? this._options.pureComponentImport! : this._options.componentImport;
@@ -299,12 +310,53 @@ export class ComponentFixer {
 
         let areEqualInfo: ReturnType<ComponentFixer["getImportAndFixit"]> | null = null;
         if (canUseAreEqual && isLikelyMemoizable) {
-            areEqualInfo = this.getImportAndFixit(
-                fixer,
-                root,
-                this._options.areEqualImport,
-                this._options.areEqualModule
-            );
+            // Double check we didn't just create an import we can piggy back off of.
+            const alreadyExistingImport =
+                componentInfo.importModule && componentInfo.importModule === this._options.areEqualModule;
+            const alreadyNewImport =
+                componentInfo.inferedModule &&
+                componentInfo.inferedSpecifier &&
+                componentInfo.inferedModule === this._options.areEqualModule;
+            if (componentInfo.fixit && (alreadyExistingImport || alreadyNewImport)) {
+                // Grab a safe name for our areEqual import
+                let areEqualImportName = this._options.areEqualImport;
+                const baseName = areEqualImportName;
+                const safeName = this.getSafeImportAlias(baseName, this._options.areEqualModule);
+                let mapped = safeName[0];
+                if (mapped) {
+                    areEqualImportName = safeName[1];
+                }
+
+                const importSpecifier = `${mapped ? `${baseName} as ${areEqualImportName}` : areEqualImportName}`;
+
+                // If there's a new import we just created, just map ours on.
+                if (alreadyNewImport) {
+                    componentInfo.fixit = {
+                        range: [0, 0],
+                        text: `import { ${componentInfo.inferedSpecifier}, ${importSpecifier} } from '${
+                            componentInfo.inferedModule
+                        }';\n`,
+                    };
+                    areEqualInfo = {
+                        importName: areEqualImportName,
+                    };
+                } else if (componentInfo.inferedIsDefault) {
+                    areEqualInfo = { importModule: componentInfo.importModule!, importName: componentInfo.importName! };
+                } else {
+                    const imports = `, ${componentInfo.inferedSpecifier}, ${importSpecifier}`;
+                    componentInfo.fixit = fixer.insertTextAfterRange(componentInfo.lastImportSpecifier!, imports);
+                    areEqualInfo = {
+                        importName: areEqualImportName,
+                    };
+                }
+            } else {
+                areEqualInfo = this.getImportAndFixit(
+                    fixer,
+                    root,
+                    this._options.areEqualImport,
+                    this._options.areEqualModule
+                );
+            }
         }
         return {
             componentInfo,
@@ -332,25 +384,12 @@ export class ComponentFixer {
             baseImportDeclaration = child;
         }
 
-        const { variables } = this._context.getScope();
-
         // Ensure that the import name does conflict with any other variable names.
-        let i = 0;
         const baseName = importName;
-        let mapped = false;
-        function isNonImportMatch(variable: Scope.Variable): boolean {
-            if (variable.name !== importName) {
-                return false;
-            }
-
-            return !variable.defs.every(
-                scope => scope.type === "ImportBinding" && scope.parent.source.value === importModule
-            );
-        }
-
-        while (variables.find(isNonImportMatch)) {
-            importName = `${baseName}${i++}`;
-            mapped = true;
+        const safeName = this.getSafeImportAlias(baseName, importModule);
+        let mapped = safeName[0];
+        if (mapped) {
+            importName = safeName[1];
         }
 
         const importSpecifier = `${mapped ? `${baseName} as ${importName}` : importName}`;
@@ -360,7 +399,7 @@ export class ComponentFixer {
                 range: [0, 0],
                 text: `import { ${importSpecifier} } from '${importModule}';\n`,
             };
-            return { fixit: fix, importName };
+            return { fixit: fix, importName, inferedSpecifier: importSpecifier, inferedModule: importModule };
         }
 
         let defaultImport: string | null = null;
@@ -381,11 +420,37 @@ export class ComponentFixer {
             return {
                 fixit: fixer.insertTextAfterRange(lastImportSpecifier, `, ${importSpecifier}`),
                 importName,
+                inferedSpecifier: importSpecifier,
+                lastImportSpecifier,
             };
         } else if (defaultImport) {
-            return { importModule: defaultImport, importName: baseName };
+            return { importModule: defaultImport, importName: baseName, inferedIsDefault: true };
         }
         return null;
+    }
+
+    private getSafeImportAlias(name: string, importModule: string): [boolean, string] {
+        const { variables } = this._context.getScope();
+
+        // Ensure that the import name does conflict with any other variable names.
+        let i = 0;
+        const baseName = name;
+        let mapped = false;
+        function isNonImportMatch(variable: Scope.Variable): boolean {
+            if (variable.name !== name) {
+                return false;
+            }
+
+            return !variable.defs.every(
+                scope => scope.type === "ImportBinding" && scope.parent.source.value === importModule
+            );
+        }
+
+        while (variables.find(isNonImportMatch)) {
+            name = `${baseName}${i++}`;
+            mapped = true;
+        }
+        return [mapped, name];
     }
 
     private getComponentNames(componentCall: CallExpression): { displayName: string | null; className: string } {
@@ -694,6 +759,12 @@ interface ImportInformation {
     importName: string;
     importModule?: string;
     fixit?: Rule.Fix;
+
+    // Special properties to allow modifying import info
+    inferedModule?: string;
+    inferedSpecifier?: string;
+    inferedIsDefault?: boolean;
+    lastImportSpecifier?: [number, number];
 }
 
 interface Props {

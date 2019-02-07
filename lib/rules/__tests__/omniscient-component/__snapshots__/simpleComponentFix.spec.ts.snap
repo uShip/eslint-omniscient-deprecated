@@ -86,13 +86,28 @@ Object {
   "fixed": true,
   "messages": Array [],
   "output": "import { memo } from 'react';
-import { isEqualImmutable } from 'ImmutableComponent';
 
 import component from 'omniscient';
 
 const TestComponent = memo(function TestComponent({ test }) {
     return <h1>{test}</h1>;
 });
+TestComponent.displayName = \\"TestComponent\\";",
+}
+`;
+
+exports[`simple component conversions should convert simple component to function when has memo and pass areEqual 1`] = `
+Object {
+  "fixed": true,
+  "messages": Array [],
+  "output": "import { memo } from 'react';
+import { isEqualImmutable } from 'ImmutableComponent';
+
+import component from 'omniscient';
+
+const TestComponent = memo(function TestComponent({ test }) {
+    return <h1>{test}</h1>;
+}, isEqualImmutable);
 TestComponent.displayName = \\"TestComponent\\";",
 }
 `;
@@ -129,7 +144,6 @@ Object {
   "fixed": true,
   "messages": Array [],
   "output": "import { memo } from 'react';
-import { isEqualImmutable } from 'ImmutableComponent';
 
 import component from 'omniscient';
 

@@ -52,4 +52,35 @@ const TestComponent = component(() => {
         expect(report).toBeFixed();
         expect(report).toMatchSnapshot();
     });
+
+    it("should handle double import fixes", () => {
+        const report = fix(
+            input,
+            withRuleOptions({
+                memoImport: "memo",
+                memoModule: "MyLib",
+                areEqualImport: "areEqual",
+                areEqualModule: "MyLib",
+                passAreEqualToMemo: true,
+            })
+        );
+        expect(report).toBeFixed();
+        expect(report).toMatchSnapshot();
+    });
+
+    it("should handle double import fixes on already present type", () => {
+        const customInput = `import MyLib from 'MyLib';${input}`;
+        const report = fix(
+            customInput,
+            withRuleOptions({
+                memoImport: "memo",
+                memoModule: "MyLib",
+                areEqualImport: "areEqual",
+                areEqualModule: "MyLib",
+                passAreEqualToMemo: true,
+            })
+        );
+        expect(report).toBeFixed();
+        expect(report).toMatchSnapshot();
+    });
 });
