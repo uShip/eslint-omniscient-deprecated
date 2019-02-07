@@ -9,6 +9,7 @@ shouldComponentUpdate(nextProps, nextState) {
                 return !(is(this.props, nextProps) && ((!oldState && !newState) || is(this.state, nextState)));
 
             }
+
 getA = () => { return <h1>Test</h1>; }
 
 state = {a : 1}
@@ -31,6 +32,7 @@ shouldComponentUpdate(nextProps, nextState) {
                 return !(is(this.props, nextProps) && ((!oldState && !newState) || is(this.state, nextState)));
 
             }
+
 getA() => { return <h1>Test</h1>; }
 
 render() { return this.getA().bind(this); }

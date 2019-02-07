@@ -512,7 +512,7 @@ export class ComponentFixer {
                 return [
                     {
                         type: "Value",
-                        isStatic: true,
+                        isStatic,
                         rawText: reduced,
                         key: { text: name },
                     },
@@ -525,7 +525,7 @@ export class ComponentFixer {
             return [
                 {
                     type: "Value",
-                    isStatic: true,
+                    isStatic,
                     rawText,
                     key: { text: name },
                 },

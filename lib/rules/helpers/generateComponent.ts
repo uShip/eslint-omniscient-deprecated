@@ -174,6 +174,9 @@ function generateClassComponent(context: GeneratorContext, classInfo: ClassCompo
     }
 
     while (instanceProperties.length > 0) {
+        if (/\s/.test(classBody[classBody.length - 1])) {
+            classBody.push("");
+        }
         const next = instanceProperties.pop()!;
         classBody.push(getBodyProperty(context, next));
         if (instanceProperties.length > 0) {

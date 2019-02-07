@@ -164,8 +164,6 @@ import { isEqualImmutable } from 'ImmutableComponent';
 import component from 'omniscient';
 
 class TestComponent extends Component {
-    static state = { i: 1 };
-
     shouldComponentUpdate(nextProps, nextState) {
         return !(
             isEqualImmutable(this.props, nextProps) &&
@@ -173,6 +171,8 @@ class TestComponent extends Component {
                 isEqualImmutable(this.state, nextState))
         );
     }
+
+    state = { i: 1 };
 
     render() {
         const { label } = this.props;
