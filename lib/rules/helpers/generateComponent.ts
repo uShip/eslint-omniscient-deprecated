@@ -151,9 +151,6 @@ function generateClassComponent(context: GeneratorContext, classInfo: ClassCompo
             }`;
     }
 
-    const shouldUpdateProperty = properties.filter(p => p.key.text === "shouldComponentUpdate");
-    if (shouldUpdateProperty.length > 0) properties.splice(properties.indexOf(shouldUpdateProperty[0]), 1);
-
     classBody.push(`class ${name} extends ${extendsName} {`);
 
     const constructorProperties = properties.filter(
