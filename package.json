@@ -1,6 +1,6 @@
 {
     "name": "@uship/eslint-plugin-omniscient",
-    "version": "2.0.5",
+    "version": "2.1.0",
     "description": "An eslint rule to lint for, and fix, usages of omniscient.",
     "keywords": [
         "eslint",
