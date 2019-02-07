@@ -1,0 +1,97 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`omniscient fixer should binary display name 1`] = `
+Object {
+  "fixed": true,
+  "messages": Array [],
+  "output": "import { Component } from 'react';
+import { isEqualImmutable } from 'ImmutableComponent';
+
+import component from 'omniscient';
+let b = \\"b\\";
+class Test extends Component {
+    static displayName = \\"a\\" + b;
+
+    shouldComponentUpdate(nextProps, nextState) {
+        return !(
+            isEqualImmutable(this.props, nextProps) &&
+            ((!oldState && !newState) ||
+                isEqualImmutable(this.state, nextState))
+        );
+    }
+
+    render() {}
+}",
+}
+`;
+
+exports[`omniscient fixer should raw no display name 1`] = `
+Object {
+  "fixed": true,
+  "messages": Array [],
+  "output": "import { Component } from 'react';
+import { isEqualImmutable } from 'ImmutableComponent';
+
+import component from 'omniscient';
+class Test extends Component {
+    shouldComponentUpdate(nextProps, nextState) {
+        return !(
+            isEqualImmutable(this.props, nextProps) &&
+            ((!oldState && !newState) ||
+                isEqualImmutable(this.state, nextState))
+        );
+    }
+
+    render() {}
+}",
+}
+`;
+
+exports[`omniscient fixer should string display name 1`] = `
+Object {
+  "fixed": true,
+  "messages": Array [],
+  "output": "import { Component } from 'react';
+import { isEqualImmutable } from 'ImmutableComponent';
+
+import component from 'omniscient';
+class Test extends Component {
+    static displayName = \\"a\\";
+
+    shouldComponentUpdate(nextProps, nextState) {
+        return !(
+            isEqualImmutable(this.props, nextProps) &&
+            ((!oldState && !newState) ||
+                isEqualImmutable(this.state, nextState))
+        );
+    }
+
+    render() {}
+}",
+}
+`;
+
+exports[`omniscient fixer should template display name 1`] = `
+Object {
+  "fixed": true,
+  "messages": Array [],
+  "output": "import { Component } from 'react';
+import { isEqualImmutable } from 'ImmutableComponent';
+
+import component from 'omniscient';
+let b = \\"b\\";
+class Test extends Component {
+    static displayName = \`a\${b}\`;
+
+    shouldComponentUpdate(nextProps, nextState) {
+        return !(
+            isEqualImmutable(this.props, nextProps) &&
+            ((!oldState && !newState) ||
+                isEqualImmutable(this.state, nextState))
+        );
+    }
+
+    render() {}
+}",
+}
+`;

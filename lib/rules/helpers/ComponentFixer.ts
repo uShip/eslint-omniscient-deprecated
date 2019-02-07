@@ -84,6 +84,7 @@ export class ComponentFixer {
             // Check if name or options
             switch (calli.arguments[0].type) {
                 case "Literal":
+                case "TemplateLiteral":
                 case "Identifier":
                 case "BinaryExpression":
                     // This is the component's displayName
@@ -98,6 +99,7 @@ export class ComponentFixer {
             // Check the displayName argument
             switch (calli.arguments[0].type) {
                 case "Literal":
+                case "TemplateLiteral":
                 case "Identifier":
                 case "BinaryExpression":
                     // This is the component's displayName
