@@ -515,6 +515,8 @@ export class ComponentFixer {
                         isStatic,
                         rawText: reduced,
                         key: { text: name },
+                        leadingComments: this.mapLeadingComments(property, sourceCode),
+                        trailingComments: this.mapTrailingComments(property, sourceCode),
                     },
                 ];
             }
@@ -528,6 +530,8 @@ export class ComponentFixer {
                     isStatic,
                     rawText,
                     key: { text: name },
+                    leadingComments: this.mapLeadingComments(property, sourceCode),
+                    trailingComments: this.mapTrailingComments(property, sourceCode),
                 },
             ];
         }
@@ -541,6 +545,8 @@ export class ComponentFixer {
                 isStatic,
                 body: property.value as any,
                 type: (property.value.type === "FunctionExpression" ? "Function" : "Value") as any,
+                leadingComments: this.mapLeadingComments(property, sourceCode),
+                trailingComments: this.mapTrailingComments(property, sourceCode),
             },
         ];
     }
@@ -555,6 +561,24 @@ export class ComponentFixer {
         if (statement.type !== "ReturnStatement") return;
         if (statement.argument == null || statement.argument.type !== "ObjectExpression") return;
         return this._context.getSourceCode().getText(statement.argument);
+    }
+
+    private mapLeadingComments(property: Property, sourceCode: SourceCode): string[] {
+        if (property.leadingComments == null || property.leadingComments.length === 0) {
+            return [];
+        }
+        return property.leadingComments.map(comment => {
+            return sourceCode.getText(comment as any);
+        });
+    }
+
+    private mapTrailingComments(property: Property, sourceCode: SourceCode): string[] {
+        if (property.trailingComments == null || property.trailingComments.length === 0) {
+            return [];
+        }
+        return property.trailingComments.map(comment => {
+            return sourceCode.getText(comment as any);
+        });
     }
 
     private getMethods(properties: Property[]): Property[] {

@@ -1,0 +1,109 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`comments block comments should be included 1`] = `
+Object {
+  "fixed": true,
+  "messages": Array [],
+  "output": "import { Component } from 'react';
+import { isEqualImmutable } from 'ImmutableComponent';
+
+import component from 'omniscient';
+
+class Test extends Component {
+    shouldComponentUpdate(nextProps, nextState) {
+        return !(
+            isEqualImmutable(this.props, nextProps) &&
+            ((!oldState && !newState) ||
+                isEqualImmutable(this.state, nextState))
+        );
+    }
+
+    /*
+     * Block!
+     */
+    a = 1;
+
+    render() {}
+}",
+}
+`;
+
+exports[`comments mix and match comments should be included 1`] = `
+Object {
+  "fixed": true,
+  "messages": Array [],
+  "output": "import { Component } from 'react';
+import { isEqualImmutable } from 'ImmutableComponent';
+
+import component from 'omniscient';
+
+class Test extends Component {
+    shouldComponentUpdate(nextProps, nextState) {
+        return !(
+            isEqualImmutable(this.props, nextProps) &&
+            ((!oldState && !newState) ||
+                isEqualImmutable(this.state, nextState))
+        );
+    }
+
+    // This is a
+    /*
+     * Block!
+     */
+    a = 1;
+
+    render() {}
+}",
+}
+`;
+
+exports[`comments single line comments should be included 1`] = `
+Object {
+  "fixed": true,
+  "messages": Array [],
+  "output": "import { Component } from 'react';
+import { isEqualImmutable } from 'ImmutableComponent';
+
+import component from 'omniscient';
+
+class Test extends Component {
+    shouldComponentUpdate(nextProps, nextState) {
+        return !(
+            isEqualImmutable(this.props, nextProps) &&
+            ((!oldState && !newState) ||
+                isEqualImmutable(this.state, nextState))
+        );
+    }
+
+    // This is a
+    a = 1;
+
+    render() {}
+}",
+}
+`;
+
+exports[`comments trailing single line comments should be included 1`] = `
+Object {
+  "fixed": true,
+  "messages": Array [],
+  "output": "import { Component } from 'react';
+import { isEqualImmutable } from 'ImmutableComponent';
+
+import component from 'omniscient';
+
+class Test extends Component {
+    shouldComponentUpdate(nextProps, nextState) {
+        return !(
+            isEqualImmutable(this.props, nextProps) &&
+            ((!oldState && !newState) ||
+                isEqualImmutable(this.state, nextState))
+        );
+    }
+
+    a = 1; // This is a
+
+    render() {}
+}",
+}
+`;

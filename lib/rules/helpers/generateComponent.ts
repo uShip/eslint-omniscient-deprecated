@@ -22,6 +22,8 @@ export interface PropertyInformation {
     isStatic: boolean;
     getter?: boolean;
     rawText?: string;
+    leadingComments?: string[];
+    trailingComments?: string[];
 }
 
 export interface ComponentValueProperty extends PropertyInformation {
@@ -48,6 +50,18 @@ interface GeneratorContext {
     canUseClassProperties?: boolean;
 }
 
+function lc(property: PropertyInformation): string {
+    return property.leadingComments && property.leadingComments.length > 0
+        ? property.leadingComments.join("\n") + "\n"
+        : "";
+}
+
+function tc(property: PropertyInformation): string {
+    return property.trailingComments && property.trailingComments.length > 0
+        ? property.trailingComments.join("\n")
+        : "";
+}
+
 function isConstructorProperty(property: ComponentProperty, canUseClassProperties?: boolean): boolean {
     if (canUseClassProperties === false) {
         return property.type !== "Function" || property.key.isComputedIdentifier === true;
@@ -69,17 +83,19 @@ function getBodyText({ sourceCode, canUseClassProperties }: GeneratorContext, pr
 
 function getConstructorProperty(context: GeneratorContext, property: ComponentProperty): string {
     const assigment = property.key.isComputedIdentifier ? `this${property.key.text}` : `this.${property.key.text}`;
-    return `${assigment} = ${getBodyText(context, property)}`;
+    return `${lc(property)}${assigment} = ${getBodyText(context, property)}${tc(property)}`;
 }
 
 function getBodyProperty(context: GeneratorContext, property: ComponentProperty): string {
+    const lcLines = lc(property);
+    const tcLines = tc(property);
     if (property.type === "Value") {
-        return `${property.key.text} = ${getBodyText(context, property)}`;
+        return `${lcLines}${property.key.text} = ${getBodyText(context, property)}${tcLines}`;
     } else {
         if (context.canUseClassProperties) {
-            return `${property.key.text} = ${getBodyText(context, property)}`;
+            return `${lcLines}${property.key.text} = ${getBodyText(context, property)}${tcLines}`;
         }
-        return `${property.key.text}${getBodyText(context, property)}`;
+        return `${lcLines}${property.key.text}${getBodyText(context, property)}${tcLines}`;
     }
 }
 
@@ -95,26 +111,26 @@ function getStaticProperty(
             key = key.slice(1, key.length - 1);
         }
         if (property.getter || property.key.isComputedIdentifier) {
-            let propBody = "";
+            let propBody = lc(property);
             propBody += `Object.defineProperty(${componentName}, ${key}, {`;
             if (property.getter) {
                 propBody += `\n    get${getBodyText(context, property)}`;
             } else {
                 propBody += `\n    value: ${getBodyText(context, property)}`;
             }
-            propBody += `\n});`;
+            propBody += `\n});${tc(property)}`;
             return propBody;
         } else {
             let valueBody = getBodyText(context, property);
             if (property.body && property.body.type === "FunctionExpression") {
                 valueBody = `function ${valueBody}`;
             }
-            return `${componentName}.${property.key.text} = ${valueBody};`;
+            return `${lc(property)}${componentName}.${property.key.text} = ${valueBody};${tc(property)}`;
         }
     } else {
-        return `static ${property.getter ? "get " : ""}${property.key.text}${
+        return `${lc(property)}static ${property.getter ? "get " : ""}${property.key.text}${
             property.type === "Value" ? " = " : ""
-        }${getBodyText(context, property)};`;
+        }${getBodyText(context, property)};${tc(property)}`;
     }
 }
 
@@ -135,10 +151,8 @@ function generateClassComponent(context: GeneratorContext, classInfo: ClassCompo
             }`;
     }
 
-    if (context.isUnmemoizable) {
-        const shouldUpdateProperty = properties.filter(p => p.key.text === "shouldComponentUpdate");
-        if (shouldUpdateProperty.length > 0) properties.splice(properties.indexOf(shouldUpdateProperty[0]), 1);
-    }
+    const shouldUpdateProperty = properties.filter(p => p.key.text === "shouldComponentUpdate");
+    if (shouldUpdateProperty.length > 0) properties.splice(properties.indexOf(shouldUpdateProperty[0]), 1);
 
     classBody.push(`class ${name} extends ${extendsName} {`);
 
