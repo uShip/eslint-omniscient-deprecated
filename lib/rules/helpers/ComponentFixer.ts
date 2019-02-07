@@ -69,7 +69,14 @@ export class ComponentFixer {
         }
 
         // Is the last argument a valid render Function?
-        if (!calli.arguments[calli.arguments.length - 1].type.includes("Expression")) {
+        const renderFunc = calli.arguments[calli.arguments.length - 1];
+        if (!renderFunc.type.includes("Expression")) {
+            return false;
+        }
+
+        try {
+            ComponentFixer.getRenderProps(renderFunc as FunctionExpression);
+        } catch (e) {
             return false;
         }
 
@@ -581,7 +588,9 @@ export class ComponentFixer {
             }
             if (renderProps.isObjectPattern) {
                 const isChildrenProp = (prop: Property): boolean =>
-                    prop.key.type === "Identifier" && prop.key.name === "children";
+                    prop.key /* Some parsers don't provide keys for spread properies */ &&
+                    prop.key.type === "Identifier" &&
+                    prop.key.name === "children";
                 if (renderProps.props.properties.some(isChildrenProp)) return false;
             }
         }
@@ -597,6 +606,11 @@ export class ComponentFixer {
 
     private static getPropName(prop: Property, sourceCode: SourceCode): string {
         const key = prop.key;
+        if (!key) {
+            if ("argument" in prop && "name" in prop["argument"]) {
+                return prop["argument"]["name"] as string;
+            }
+        }
         switch (key.type) {
             case "Literal":
                 return `${key.value}`;
@@ -645,9 +659,9 @@ export class ComponentFixer {
         }
         switch (propsArgument.type) {
             case "Identifier":
-                return { hasProps: true, isObjectPattern: false, props: propsArgument.name };
+                return { hasProps: true, isObjectPattern: false, isRestPattern: false, props: propsArgument.name };
             case "ObjectPattern":
-                return { hasProps: true, isObjectPattern: true, props: propsArgument };
+                return { hasProps: true, isObjectPattern: true, isRestPattern: false, props: propsArgument };
             default:
                 throw Error("Unknown argument pattern for render props");
         }
@@ -693,16 +707,19 @@ interface EmptyProps extends Props {
 interface PresentProps extends Props {
     hasProps: true;
     isObjectPattern: boolean;
+    isRestPattern: boolean;
 }
 
 interface NamedProps extends PresentProps {
     hasProps: true;
     isObjectPattern: false;
+    isRestPattern: false;
     props: string;
 }
 
 interface DestructedProps extends PresentProps {
     hasProps: true;
     isObjectPattern: true;
+    isRestPattern: false;
     props: ObjectPattern;
 }

@@ -1,0 +1,27 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`render conversion should handle rest on props destructure 1`] = `
+Object {
+  "fixed": true,
+  "messages": Array [],
+  "output": "import { Component } from 'react';
+import { isEqualImmutable } from 'ImmutableComponent';
+
+    import component from 'omniscient';
+
+    class TestComponent extends Component {
+    shouldComponentUpdate(nextProps, nextState) {
+        return !(
+            isEqualImmutable(this.props, nextProps) &&
+            ((!oldState && !newState) ||
+                isEqualImmutable(this.state, nextState))
+        );
+    }
+
+    render() {
+        const { a, ...test } = this.props;
+        return <h1 {...test}>Test</h1>;
+    }
+}",
+}
+`;
